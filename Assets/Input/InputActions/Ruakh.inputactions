@@ -784,6 +784,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "OnStart",
+                    "type": "Button",
+                    "id": "eb885d78-5b9a-4460-bcf3-a207e83f57f0",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -795,6 +804,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "FireEffect",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "bb89e520-6ecd-40a3-b1b9-20fd8a9e0236",
+                    "path": "<Keyboard>/anyKey",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OnStart",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e48afbde-113c-4f83-9e18-4c63c768c610",
+                    "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OnStart",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
