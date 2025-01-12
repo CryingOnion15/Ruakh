@@ -23,10 +23,24 @@ public class HolySpiritController2D : MonoBehaviour
     protected Rigidbody rb;
     protected Vector3 forceDirection = Vector3.zero;
 
+    public InputAction movementAction;
+
+    //public InputActionMap actionMap;
+
+    void Awake()
+    {
+        movementAction.performed += OnMove;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+    }
+
+    void OnEnable()
+    {
+        movementAction.Enable();
     }
 
     void FixedUpdate()
@@ -56,9 +70,9 @@ public class HolySpiritController2D : MonoBehaviour
         }
     }
 
-    public void OnMove(InputValue input)
+    public void OnMove(InputAction.CallbackContext input)
     {
-        Vector2 inputDirection = input.Get<Vector2>();
+        Vector2 inputDirection = input.ReadValue<Vector2>();
         forceDirection.x = inputDirection.x;
         forceDirection.z = inputDirection.y;
     }

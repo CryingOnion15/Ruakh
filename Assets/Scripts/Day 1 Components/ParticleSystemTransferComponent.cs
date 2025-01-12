@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class ParticleSystemSimulationSpaceChanger : MonoBehaviour
+public class ParticleSystemTransterComponent : MonoBehaviour
 {
     [SerializeField]
     protected ParticleSystem toSystem = null;
@@ -78,7 +78,7 @@ public class ParticleSystemSimulationSpaceChanger : MonoBehaviour
 
             toSystem.SetParticles(toParticles);
 
-            if (amountCollected == amountToCollect)
+            if (amountCollected >= amountToCollect)
             {
                 isCollecting = false;
                 collectionDoneEvent.Invoke();

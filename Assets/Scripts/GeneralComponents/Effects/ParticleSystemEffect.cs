@@ -12,10 +12,13 @@ public class ParticleSystemEffect : Effect
 
     protected override void playAction()
     {
-        if (play) {
+        if (play)
+        {
             particleSys.Play();
             Complete();
-        } else {
+        }
+        else
+        {
             particleSys.Stop();
             Complete();
         }
