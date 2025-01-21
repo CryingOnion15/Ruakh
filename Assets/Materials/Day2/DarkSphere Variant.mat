@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8496522032314844425
+--- !u!114 &-1121965470409169440
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,18 +20,19 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Water Variant
-  m_Shader: {fileID: -6465566751694194690, guid: c5e42187f3e8eb14da13a82d9cf338e8, type: 3}
-  m_Parent: {fileID: -876546973899608171, guid: c5e42187f3e8eb14da13a82d9cf338e8, type: 3}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_Name: DarkSphere Variant
+  m_Shader: {fileID: -6465566751694194690, guid: 175a553fc7cf2a6449f3aad8b582eaf9, type: 3}
+  m_Parent: {fileID: -876546973899608171, guid: 175a553fc7cf2a6449f3aad8b582eaf9, type: 3}
+  m_ModifiedSerializedProperties: 16
+  m_ValidKeywords:
+  - _BUILTIN_SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 2990
   stringTagMap:
-    RenderType: Opaque
+    RenderType: Transparent
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -39,8 +40,17 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _BUILTIN_Blend: 0
+    - _BUILTIN_CullMode: 2
+    - _BUILTIN_DstBlend: 10
     - _BUILTIN_QueueControl: 0
-    - _Radius: 0.88
+    - _BUILTIN_QueueOffset: -10
+    - _BUILTIN_SrcBlend: 5
+    - _BUILTIN_Surface: 1
+    - _BUILTIN_ZTest: 4
+    - _BUILTIN_ZWrite: 0
+    - _BUILTIN_ZWriteControl: 0
+    - _FadeIn: 0.066
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1
