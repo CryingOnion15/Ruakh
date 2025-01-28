@@ -34,11 +34,15 @@ Material:
     - _BUILTIN_SrcBlend: 5
     - _BUILTIN_ZTest: 2
     - _CellDensity: 25
-    - _FadeIn: 0
+    - _EnableWave: 1
+    - _FadeIn: -0.3
     - _MoveSpeed: 3
     - _NoiseScale: 5
     - _OrangeStep: 0.2
     - _PowerStrength: 2
+    - _WaveAmp: 0.03
+    - _WaveFrequence: 0.2
+    - _WaveSpeed: -20
     m_Colors:
     - _Scroll1_Direction: {r: 1, g: 1, b: 0, a: 0}
     - _Scroll2Direction: {r: -1, g: -1, b: 0, a: 0}
