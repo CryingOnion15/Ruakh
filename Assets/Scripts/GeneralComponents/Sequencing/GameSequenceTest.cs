@@ -12,7 +12,7 @@ public class GameSequenceTest : MonoBehaviour
     void Start()
     {
         GameStateManager.Instance.State = GameState.Start;
-        startGameAction.performed += StartGame;
+        startGameAction.performed += ProgressState;
     }
 
     void OnEnable()
@@ -25,11 +25,21 @@ public class GameSequenceTest : MonoBehaviour
         startGameAction.Disable();
     }
 
-    public void StartGame(InputAction.CallbackContext context)
+    public void ProgressState(InputAction.CallbackContext context)
     {
-        if (GameStateManager.Instance.State == GameState.Start)
+        switch (GameStateManager.Instance.State)
         {
-            GameStateManager.Instance.State = GameState.Day1;
+            case GameState.Start:
+                GameStateManager.Instance.State = GameState.Day1;
+                break;
+            case GameState.Day1:
+                GameStateManager.Instance.State = GameState.Day2;
+                break;
         }
+
+        // if (GameStateManager.Instance.State == GameState.Start)
+        // {
+        //     GameStateManager.Instance.State = GameState.Day1;
+        // }
     }
 }
