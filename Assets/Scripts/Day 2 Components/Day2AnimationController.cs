@@ -1,7 +1,34 @@
+using System.Collections.Generic;
 using System.ComponentModel;
+using NUnit.Framework.Constraints;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+
+[System.Serializable]
+public class AnimationMilestone
+{
+    public InputAction milestoneAction;
+
+    public Effect milestoneHitEffect;
+
+    public Effect milestoneReverseEffect;
+
+    public bool QueryInput()
+    {
+        return milestoneAction.IsPressed();
+    }
+
+    public void EnableInput()
+    {
+        milestoneAction.Enable();
+    }
+
+    public void DisableInput()
+    {
+        milestoneAction.Disable();
+    }
+}
 
 public class Day2AnimationController : MonoBehaviour
 {
@@ -12,25 +39,26 @@ public class Day2AnimationController : MonoBehaviour
     protected AnimationClip clip = null;
 
     [SerializeField]
-    protected InputAction holdAction = null;
+    protected List<AnimationMilestone> milestones = new List<AnimationMilestone>();
 
     [SerializeField]
-    protected float holdThreshold = 2.5f;
-
-    [SerializeField, ReadOnly(true)]
-    protected float currentThreshold = 0f;
-    protected float currentTime = 0f;
+    protected float reverseSpeed = -.5f;
     protected bool isCompleted = false;
+    protected int currentMilestone = 0;
+    protected AnimationState animState;
+    protected float milestonePercentTime = 0;
 
     void OnEnable()
     {
-        holdAction.Enable();
         SetClip();
     }
 
     void OnDisable()
     {
-        holdAction.Disable();
+        milestones.ForEach(milestone =>
+        {
+            milestone.DisableInput();
+        });
     }
 
     // Update is called once per frame
@@ -39,62 +67,69 @@ public class Day2AnimationController : MonoBehaviour
         if (isCompleted)
             return;
 
-        if (holdAction.IsPressed())
+        if (CheckProgressInput())
         {
-            if (currentThreshold < holdThreshold)
+            //Debug.Log("HERE");
+            if (animState.speed != 1)
             {
-                if (anim.isPlaying)
-                {
-                    anim[clip.name].speed = 0;
-                }
-
-                currentThreshold += Time.deltaTime;
-                if (currentThreshold > holdThreshold)
-                {
-                    currentThreshold = holdThreshold;
-                }
+                animState.speed = 1;
             }
 
-            if (currentThreshold == holdThreshold && anim[clip.name].speed != 1)
-            {
-                anim[clip.name].speed = 1;
-            }
-
-            if (anim[clip.name].time >= anim[clip.name].length)
+            if (animState.time >= animState.length)
             {
                 Complete();
+            }
+            else if (animState.time >= milestonePercentTime * (currentMilestone + 1))
+            {
+                milestones[currentMilestone].milestoneHitEffect?.PlayFromEvent();
+                currentMilestone++;
+                milestones[currentMilestone].EnableInput();
+            }
+        }
+        else if (CheckStaticInput())
+        {
+            if (animState.time > milestonePercentTime * currentMilestone)
+            {
+                animState.speed = reverseSpeed;
+            }
+            else
+            {
+                animState.speed = 0;
             }
         }
         else
         {
-            if (anim[clip.name].speed == 1)
+            if (currentMilestone > 0 && animState.time < milestonePercentTime * currentMilestone)
             {
-                anim[clip.name].speed = -1;
+                milestones[currentMilestone].DisableInput();
+                currentMilestone--;
+                milestones[currentMilestone].milestoneReverseEffect?.PlayFromEvent();
             }
 
-            if (anim[clip.name].time <= 0)
+            if (animState.speed != reverseSpeed)
             {
-                anim[clip.name].time = 0;
-                anim[clip.name].speed = 0;
+                animState.speed = reverseSpeed;
             }
 
-            if (currentThreshold > 0)
+            if (animState.time <= 0)
             {
-                currentThreshold -= Time.deltaTime;
-
-                if (currentThreshold < 0)
-                {
-                    currentThreshold = 0;
-                }
+                animState.time = 0;
+                animState.speed = 0;
             }
+
+            Debug.Log("No Input");
         }
     }
 
     public void SetClip()
     {
         anim.clip = clip;
-        anim[clip.name].speed = 0;
+        animState = anim[clip.name];
+        animState.speed = 0;
+        milestonePercentTime = animState.length / milestones.Count;
+        milestones[0].EnableInput();
         anim.Play();
+        animState.time = 0;
     }
 
     public void Complete()
@@ -102,5 +137,35 @@ public class Day2AnimationController : MonoBehaviour
         isCompleted = true;
         anim.Stop();
         //Play Effect Here.
+    }
+
+    /*
+    Check if the input to progress the animation is being pressed.
+    */
+    protected bool CheckProgressInput()
+    {
+        bool test = true;
+
+        for (int i = currentMilestone; i >= 0 && test; i--)
+        {
+            test = test && milestones[i].QueryInput();
+        }
+
+        return test;
+    }
+
+    /*
+    Checks if the input to maintain the animation is being pressed.
+    */
+    protected bool CheckStaticInput()
+    {
+        bool test = currentMilestone > 0;
+
+        for (int i = 0; i < currentMilestone && test; i++)
+        {
+            test = test && milestones[i].QueryInput();
+        }
+
+        return test;
     }
 }
