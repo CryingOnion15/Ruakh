@@ -116,8 +116,6 @@ public class Day2AnimationController : MonoBehaviour
                 animState.time = 0;
                 animState.speed = 0;
             }
-
-            Debug.Log("No Input");
         }
     }
 
@@ -136,7 +134,7 @@ public class Day2AnimationController : MonoBehaviour
     {
         isCompleted = true;
         anim.Stop();
-        //Play Effect Here.
+        milestones[milestones.Count - 1].milestoneHitEffect?.Play();
     }
 
     /*
