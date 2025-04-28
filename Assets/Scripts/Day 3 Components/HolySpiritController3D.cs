@@ -57,7 +57,6 @@ public class HolySpiritController3D : MonoBehaviour
 
     void FixedUpdate()
     {
-        // // Add Gravity
         UpdateGravityDirection();
         UpdateTurn();
 

@@ -12,21 +12,28 @@ public class TextureColorCompletedChecker : MonoBehaviour
     protected Mesh meshToCheck;
 
     [SerializeField]
-    protected Texture2D verifyTexture;
+    protected RenderTexture renderTexture;
 
     [SerializeField]
     protected Effect CompletedEffect = null;
 
     protected float amountOfVertices;
+    protected Texture2D verifyTexture;
 
     void Start()
     {
+        verifyTexture = new Texture2D(renderTexture.width, renderTexture.height);
         amountOfVertices = meshToCheck.vertexCount;
         InvokeRepeating("CheckIfDone", checkInterval, checkInterval);
     }
 
     protected void CheckIfDone()
     {
+        RenderTexture.active = renderTexture;
+        verifyTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+        verifyTexture.Apply();
+        RenderTexture.active = null;
+
         int verticiesUpdate = 0;
         for (int i = 0; i < amountOfVertices; i++)
         {

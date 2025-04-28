@@ -1,9 +1,10 @@
+using TMPro;
 using UnityEngine;
 
-public class FadeSpriteColorEffect : Effect
+public class FadeUITextColorEffect : Effect
 {
     [SerializeField]
-    protected SpriteRenderer spriteRenderer;
+    protected TMP_Text textRenderer;
 
     [SerializeField]
     protected Color newColor;
@@ -23,13 +24,13 @@ public class FadeSpriteColorEffect : Effect
 
             if (timePassed >= duration)
             {
-                spriteRenderer.color = UnityEngine.Vector4.Lerp(startingColor, newColor, 1);
+                textRenderer.color = UnityEngine.Vector4.Lerp(startingColor, newColor, 1);
                 isPlaying = false;
                 Complete();
             }
             else
             {
-                spriteRenderer.color = Color.Lerp(startingColor, newColor, timePassed / duration);
+                textRenderer.color = Color.Lerp(startingColor, newColor, timePassed / duration);
             }
         }
     }
@@ -40,13 +41,13 @@ public class FadeSpriteColorEffect : Effect
         {
             if (duration == 0)
             {
-                spriteRenderer.color = newColor;
+                textRenderer.color = newColor;
                 Complete();
             }
             else
             {
                 timePassed = 0;
-                startingColor = spriteRenderer.color;
+                startingColor = textRenderer.color;
                 isPlaying = true;
             }
         }

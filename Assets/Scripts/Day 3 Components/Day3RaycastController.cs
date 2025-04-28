@@ -1,47 +1,93 @@
-using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
 using NUnit.Framework.Constraints;
-using NUnit.Framework.Internal;
 using UnityEngine;
 using UnityEngine.Rendering;
-
-public struct PixelCoord
-{
-    public int x;
-    public int y;
-
-    public PixelCoord(int x, int y)
-    {
-        this.x = x;
-        this.y = y;
-    }
-}
 
 public class Day3RaycastController : MonoBehaviour
 {
     public LayerMask layerMask;
     public Mesh meshData;
-    public Texture2D texture;
-    public float increaseAmount = .01f;
 
-    List<PixelCoord> currentPixels = new List<PixelCoord>();
+    public Material material;
+    public ComputeShader compShader;
+    public float colorFadeTime = 2f;
+
+    public RenderTexture renderTexture;
+
+    protected ComputeBuffer compBuffer;
+
+    protected List<int> modifiedIndices = new List<int>();
+
+    //protected RenderTexture renderTexture;
+
+    // This assumes a 1024x1024 texture.
+    protected int kernelIndex = 0;
+    protected int dispatchX = 0;
+    protected int dispatchY = 0;
+    protected int bufferCount;
+    protected int[] dataArray;
+
+    protected int debugCounter = 0;
 
     void Start()
     {
-        for (int i = 0; i < texture.width; i++)
-        {
-            for (int j = 0; j < texture.height; j++)
-            {
-                texture.SetPixel(i, j, Color.black);
-            }
-        }
+        // renderTexture = new RenderTexture(1024, 1024, 0);
+        // renderTexture.enableRandomWrite = true;
+        // renderTexture.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat;
+        // renderTexture.Create();
 
-        texture.Apply();
+        bufferCount = renderTexture.width * renderTexture.height;
+
+        //Initialize the buffer and set it to the shader.
+        compBuffer = new ComputeBuffer(bufferCount, sizeof(int));
+
+        /****** DEBUGGING ***/
+        // int[] testData = new int[1024 * 1024];
+        // testData[512 * 1024 + 512] = 1; // Center pixel = 1
+
+        // kernelIndex = compShader.FindKernel("CSMain");
+
+        // compShader.SetBuffer(kernelIndex, "dataBuffer", compBuffer);
+
+        // compShader.SetTexture(kernelIndex, "Result", debugRenderTexture);
+
+        // int[] readBack = new int[bufferCount];
+        // compBuffer.SetData(testData);
+        // compBuffer.GetData(readBack);
+        // Debug.Log(readBack[512 * 1024 + 512]);
+        // compShader.Dispatch(kernelIndex, 1024 / 16, 1024 / 16, 1);
+
+        /********************/
+
+        kernelIndex = compShader.FindKernel("CSMain");
+
+        compShader.SetBuffer(kernelIndex, "dataBuffer", compBuffer);
+
+        // Set the texture to the shader.
+        compShader.SetTexture(kernelIndex, "Result", renderTexture);
+
+        compShader.SetInt("textureWidth", renderTexture.width);
+
+        //Set the dispatch size.
+        dispatchX = Mathf.CeilToInt(renderTexture.width / 16f);
+        dispatchY = Mathf.CeilToInt(renderTexture.height / 16f);
+
+        dataArray = new int[bufferCount];
+        System.Array.Clear(dataArray, 0, bufferCount);
+        //Make sure the whole buffer is set to zero.
+        compBuffer.SetData(dataArray);
+
+        compShader.SetBuffer(kernelIndex, "dataBuffer", compBuffer);
+
+        material.SetTexture("_DepthTexture", renderTexture);
     }
 
     void Update()
     {
+        // dataArray[debugCounter] = 1;
+        // debugCounter = (debugCounter + 1) % bufferCount;
+        // compBuffer.SetData(dataArray);
+        // compShader.Dispatch(kernelIndex, 1024 / 16, 1024 / 16, 1);
         RaycastHit hit;
         if (Physics.Raycast(transform.position, -transform.up, out hit, Mathf.Infinity, layerMask))
         {
@@ -60,83 +106,67 @@ public class Day3RaycastController : MonoBehaviour
             Debug.DrawLine(vert2, vert3, Color.blue, 5f);
             Debug.DrawLine(vert3, vert1, Color.blue, 5f);
 
-            if (checkPixelIsBlack(uv1))
-            {
-                AddPixelFromUV(uv1);
-            }
+            SetPixelsToBuffer(uv1);
+            SetPixelsToBuffer(uv2);
+            SetPixelsToBuffer(uv3);
 
-            if (checkPixelIsBlack(uv2))
-            {
-                AddPixelFromUV(uv2);
-            }
+            // Set the delta float.
+            compShader.SetFloat("delta", Time.deltaTime / colorFadeTime);
 
-            if (checkPixelIsBlack(uv3))
-            {
-                AddPixelFromUV(uv3);
-            }
-        }
+            // Update write to the buffer.
+            compBuffer.SetData(dataArray);
+            compShader.SetBuffer(kernelIndex, "dataBuffer", compBuffer);
 
-        if (currentPixels.Count > 0)
-        {
-            List<PixelCoord> markedForRemoval = new List<PixelCoord>();
-            currentPixels.ForEach(pixel =>
-            {
-                Color col = texture.GetPixel(pixel.x, pixel.y);
-                col.r += increaseAmount;
-                if (col.r >= 1)
-                {
-                    col.r = 1;
-                    markedForRemoval.Add(pixel);
-                }
-                texture.SetPixel(pixel.x, pixel.y, col);
-            });
-            currentPixels.RemoveAll(pixel => markedForRemoval.Contains(pixel));
-
-            texture.Apply();
+            // Dispatch the shader. Assumes [16,16,1]
+            compShader.Dispatch(kernelIndex, dispatchX, dispatchY, 1);
         }
     }
 
-    //Set Star of Red
-    protected void AddPixelFromUV(Vector2 uv)
+    // Add the star pattern of the pixels indices to true in the buffer.
+    protected void SetPixelsToBuffer(Vector2 uv)
     {
-        var centerX = Mathf.FloorToInt(uv.x * texture.width);
-        var centerY = Mathf.FloorToInt(uv.y * texture.height);
+        var centerX = Mathf.FloorToInt(uv.x * renderTexture.width);
+        if (centerX == renderTexture.width)
+            centerX = renderTexture.width - 1;
 
-        //texture.SetPixel(centerX, centerY, Color.red);
-        currentPixels.Add(new PixelCoord(centerX, centerY));
+        var centerY = Mathf.FloorToInt(uv.y * renderTexture.height);
+        if (centerY == renderTexture.height)
+            centerY = renderTexture.height - 1;
 
-        if (centerX > 0)
+        setRowOfPixels(centerY, centerX);
+
+        // Add a row of pixels 2 down of center.
+        if (centerY - 2 >= 0)
+            setRowOfPixels(centerY - 2, centerX);
+
+        // Add a row of pixels 1 down of center.
+        if (centerY - 1 >= 0)
+            setRowOfPixels(centerY - 2, centerX);
+
+        // Add a row of pixels 1 up of center.
+        if (centerY + 1 < renderTexture.height)
+            setRowOfPixels(centerY + 1, centerX);
+
+        // Add a row of pixels 2 up of center.
+        if (centerY + 2 < renderTexture.height)
+            setRowOfPixels(centerY + 2, centerX);
+    }
+
+    protected void setRowOfPixels(int y, int centerX)
+    {
+        int yOffset = y * renderTexture.width;
+
+        for (int i = centerX - 2; i <= centerX + 2; i++)
         {
-            //texture.SetPixel(centerX - 1, centerY, Color.red);
-            currentPixels.Add(new PixelCoord(centerX - 1, centerY));
-        }
-
-        if (centerX < texture.width - 1)
-        {
-            //texture.SetPixel(centerX + 1, centerY, Color.red);
-            currentPixels.Add(new PixelCoord(centerX + 1, centerY));
-        }
-
-        if (centerY > 0)
-        {
-            //texture.SetPixel(centerX, centerY - 1, Color.red);
-            currentPixels.Add(new PixelCoord(centerX, centerY - 1));
-        }
-
-        if (centerY < texture.height - 1)
-        {
-            //texture.SetPixel(centerX, centerY + 1, Color.red);
-            currentPixels.Add(new PixelCoord(centerX, centerY + 1));
+            if (i >= 0 && i < renderTexture.width)
+            {
+                dataArray[yOffset + i] = 1;
+            }
         }
     }
 
-    protected bool checkPixelIsBlack(Vector2 uv)
+    void OnDestroy()
     {
-        var centerX = Mathf.FloorToInt(uv.x * texture.width);
-        var centerY = Mathf.FloorToInt(uv.y * texture.height);
-
-        var color = texture.GetPixel(centerX, centerY);
-
-        return color == Color.black;
+        compBuffer.Release();
     }
 }

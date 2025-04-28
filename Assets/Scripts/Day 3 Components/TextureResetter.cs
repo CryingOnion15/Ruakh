@@ -1,41 +1,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TextureResetter : MonoBehaviour
+public class RenderTextureToSolidEffect : Effect
 {
     [SerializeField]
-    protected List<Texture2D> textures = new List<Texture2D>();
+    protected List<RenderTexture> textures = new List<RenderTexture>();
+
+    [SerializeField]
+    protected Color color = Color.white;
 
     // Start is called before the first frame update
-    void Start()
+    protected override void playAction()
     {
         textures.ForEach(texture =>
         {
-            for (int i = 0; i < texture.width; i++)
-            {
-                for (int j = 0; j < texture.height; j++)
-                {
-                    texture.SetPixel(i, j, Color.black);
-                }
-            }
-
-            texture.Apply();
+            RenderTexture.active = texture;
+            GL.Clear(true, true, color);
+            RenderTexture.active = null;
         });
-    }
 
-    public void Final()
-    {
-        textures.ForEach(texture =>
-        {
-            for (int i = 0; i < texture.width; i++)
-            {
-                for (int j = 0; j < texture.height; j++)
-                {
-                    texture.SetPixel(i, j, Color.red);
-                }
-            }
-
-            texture.Apply();
-        });
+        Complete();
     }
 }

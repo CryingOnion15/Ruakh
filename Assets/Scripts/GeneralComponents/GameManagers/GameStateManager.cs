@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 
 public enum GameState
@@ -57,5 +58,13 @@ public class GameStateManager : MonoBehaviour
     public void AdvanceGameState()
     {
         Instance.State++;
+    }
+
+    public void ExitGame()
+    {
+#if UNITY_EDITOR
+        EditorApplication.ExitPlaymode();
+#endif
+        Application.Quit();
     }
 }
