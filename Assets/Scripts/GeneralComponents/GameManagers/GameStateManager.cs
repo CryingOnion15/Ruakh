@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 
 public enum GameState
@@ -41,7 +42,6 @@ public class GameStateManager : MonoBehaviour
         }
     }
 
-    // Start is called before the first frame update
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -51,9 +51,20 @@ public class GameStateManager : MonoBehaviour
         else
         {
             _instance = this;
+            _instance.State++;
         }
     }
 
-    // Update is called once per frame
-    void Update() { }
+    public void AdvanceGameState()
+    {
+        Instance.State++;
+    }
+
+    public void ExitGame()
+    {
+#if UNITY_EDITOR
+        EditorApplication.ExitPlaymode();
+#endif
+        Application.Quit();
+    }
 }

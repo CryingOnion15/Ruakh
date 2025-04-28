@@ -1,10 +1,4 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Numerics;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
-using UnityEngine.UIElements;
 
 public class FadeSpriteColorEffect : Effect
 {
@@ -21,31 +15,40 @@ public class FadeSpriteColorEffect : Effect
     protected float timePassed = 0;
     protected Color startingColor;
 
-    void Update() {
-        if(isPlaying) {
+    void Update()
+    {
+        if (isPlaying)
+        {
             timePassed += Time.deltaTime;
 
-            if(timePassed >= duration) {
+            if (timePassed >= duration)
+            {
                 spriteRenderer.color = UnityEngine.Vector4.Lerp(startingColor, newColor, 1);
                 isPlaying = false;
                 Complete();
-            } else {
-                spriteRenderer.color = Color.Lerp(startingColor, newColor, timePassed/duration);
+            }
+            else
+            {
+                spriteRenderer.color = Color.Lerp(startingColor, newColor, timePassed / duration);
             }
         }
     }
 
     protected override void playAction()
     {
-        if(!isPlaying) {
-            if(duration == 0) {
+        if (!isPlaying)
+        {
+            if (duration == 0)
+            {
                 spriteRenderer.color = newColor;
                 Complete();
-            } else {
-                timePassed = 0; 
+            }
+            else
+            {
+                timePassed = 0;
                 startingColor = spriteRenderer.color;
                 isPlaying = true;
             }
         }
-    }    
+    }
 }

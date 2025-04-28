@@ -1,0 +1,33 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+RWStructuredBuffer<int> dataBuffer; //Read-Write Buffer
+RWTexture2D<float4> Result; //Computed Texture
+
+float delta; //Delta time to change the color by.
+int textureWidth;
+
+[numthreads(16,16,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.y * textureWidth + id.x;
+    float4 color = Result[id.xy];
+
+    if(dataBuffer[index] == 1) {
+        if(color.r >= 1){
+            color.r = 1;
+        } else {
+            color.r += lerp(0,1,delta);
+        }
+    } else {
+        color.r = 0;
+    }
+
+    color.g = 0;
+    color.b = 0;
+    color.a = 1;
+    
+    Result[id.xy] = color;
+}
+
+

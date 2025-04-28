@@ -65,6 +65,7 @@ public class ChangeMaterialFloatEffect : Effect
         }
         else
         {
+            currentMaterial.SetFloat("_" + propertyName, newValue);
             Complete();
         }
     }

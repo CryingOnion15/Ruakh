@@ -1,20 +1,45 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class GameSequenceTest : MonoBehaviour
 {
+    [SerializeField]
+    protected InputAction startGameAction = null;
+
     // Start is called before the first frame update
     void Start()
     {
         GameStateManager.Instance.State = GameState.Start;
+        startGameAction.performed += ProgressState;
     }
 
-    public void StartGame()
+    void OnEnable()
     {
-        if (GameStateManager.Instance.State == GameState.Start)
+        startGameAction.Enable();
+    }
+
+    void OnDisable()
+    {
+        startGameAction.Disable();
+    }
+
+    public void ProgressState(InputAction.CallbackContext context)
+    {
+        switch (GameStateManager.Instance.State)
         {
-            GameStateManager.Instance.State = GameState.Day1;
+            case GameState.Start:
+                GameStateManager.Instance.State = GameState.Day1;
+                break;
+            case GameState.Day1:
+                GameStateManager.Instance.State = GameState.Day2;
+                break;
         }
+
+        // if (GameStateManager.Instance.State == GameState.Start)
+        // {
+        //     GameStateManager.Instance.State = GameState.Day1;
+        // }
     }
 }

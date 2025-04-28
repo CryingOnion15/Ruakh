@@ -43,6 +43,11 @@ public class HolySpiritController2D : MonoBehaviour
         movementAction.Enable();
     }
 
+    void OnDisable()
+    {
+        movementAction.Disable();
+    }
+
     void FixedUpdate()
     {
         // Add force

@@ -82,7 +82,6 @@ public class ParticleSystemTransterComponent : MonoBehaviour
             {
                 isCollecting = false;
                 collectionDoneEvent.Invoke();
-                Debug.Log("Event Fired");
             }
         }
     }
