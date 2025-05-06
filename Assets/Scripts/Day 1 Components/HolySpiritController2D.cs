@@ -55,22 +55,22 @@ public class HolySpiritController2D : MonoBehaviour
         {
             rb.AddForce(forceDirection * moveSpeed * Time.fixedDeltaTime, ForceMode.Impulse);
 
-            if (rb.velocity.magnitude > maxSpeed)
+            if (rb.linearVelocity.magnitude > maxSpeed)
             {
-                rb.velocity = rb.velocity.normalized * maxSpeed;
+                rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
             }
         }
         // Slowdown to stop.
         else
         {
-            if (rb.velocity.magnitude > 0)
+            if (rb.linearVelocity.magnitude > 0)
             {
-                rb.velocity = rb.velocity * (1 - (slowdownRate * Time.fixedDeltaTime));
+                rb.linearVelocity = rb.linearVelocity * (1 - (slowdownRate * Time.fixedDeltaTime));
             }
 
-            if (rb.velocity.magnitude < minSpeed)
+            if (rb.linearVelocity.magnitude < minSpeed)
             {
-                rb.velocity = Vector3.zero;
+                rb.linearVelocity = Vector3.zero;
             }
         }
     }

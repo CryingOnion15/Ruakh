@@ -1,0 +1,43 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSParticleMove
+
+struct LightParticle
+{
+    float3 position;
+    float3 velocity;
+    float life;
+};
+
+// Read Write Structured buffer that will set our particles locations.
+RWStructuredBuffer<LightParticle> particleBuffer;
+
+// Set the deltaTime from the CPU.
+float deltaTime;
+float driftSpeed;
+float particleSize;
+float halfBoundsX;
+float halfBoundsY;
+
+[numthreads(256,1,1)]
+void CSParticleMove (uint3 id : SV_DispatchThreadID)
+{
+    LightParticle particle = particleBuffer[id.x];
+    particle.life -= deltaTime;
+    particle.position += driftSpeed * particle.velocity * deltaTime;
+
+    // TODO check if particle is near the player and then give it a rotation axis and ignore the velocity.
+
+    // Flip the X velocity if it is outside the bounds.
+    if((particle.position.x + particleSize > halfBoundsX && particle.velocity.x > 0) 
+        || (particle.position.x - particleSize < -halfBoundsX && particle.velocity.x < 0)) {
+        particle.velocity.x *= -1;
+    }
+
+    // Flip the Y velocity if it is outside the bounds.
+    if((particle.position.y + particleSize > halfBoundsY && particle.velocity.y > 0) 
+        || (particle.position.y - particleSize < -halfBoundsY && particle.velocity.y < 0)) {
+        particle.velocity.y *= -1;
+    }
+
+    particleBuffer[id.x] = particle;
+}

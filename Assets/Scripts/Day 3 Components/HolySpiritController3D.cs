@@ -109,7 +109,7 @@ public class HolySpiritController3D : MonoBehaviour
     {
         forceDirection.x = 0;
         forceDirection.y = 0;
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
     }
 
     public void OnTurn(InputAction.CallbackContext input)
