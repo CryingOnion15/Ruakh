@@ -287,7 +287,7 @@ MonoBehaviour:
   particleCount: 400
   spawnBoundsX: 1920
   spawnBoundsY: 1080
-  driftSpeed: 5
+  driftSpeed: 90
   particleSize: 6
   particleColor: {r: 0.94509804, g: 0.81953216, b: 0, a: 1}
   particleVertAndFrag: {fileID: 2100000, guid: 0761a1d869f1208408649e4d050b6bc3, type: 2}

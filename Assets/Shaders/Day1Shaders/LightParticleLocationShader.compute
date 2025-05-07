@@ -3,8 +3,12 @@
 
 struct LightParticle
 {
+    float3 rotationMatRow1;
+    float3 rotationMatRow2;
+    float3 rotationMatRow3;
     float3 position;
     float3 velocity;
+    float theta;
     float life;
 };
 
@@ -17,27 +21,58 @@ float driftSpeed;
 float particleSize;
 float halfBoundsX;
 float halfBoundsY;
+float orbitSize;
+
+// Constants
+static const float PI = 3.14159265358979323846;
+static const float PHI = (PI / 2);
+static const float SINEPHI = sin(PHI);
+
+float3 GetSphericalCoord(float theta, float radius) {
+    float x = radius * SINEPHI * cos(theta);
+    float y = radius * cos(PHI);
+    float z = radius * SINEPHI * sin(theta);
+    return float3(x, y, z); 
+}
+
+float3 RotateLocation(float3 row1, float3 row2, float3 row3, float3 pos) {
+    return float3(
+        dot(row1, pos),
+        dot(row2, pos),
+        dot(row3, pos)
+    );
+}
 
 [numthreads(256,1,1)]
 void CSParticleMove (uint3 id : SV_DispatchThreadID)
 {
     LightParticle particle = particleBuffer[id.x];
-    particle.life -= deltaTime;
-    particle.position += driftSpeed * particle.velocity * deltaTime;
 
-    // TODO check if particle is near the player and then give it a rotation axis and ignore the velocity.
+    float3 equatorPos = GetSphericalCoord(particle.theta, orbitSize);
+    float3 rotatedPos = RotateLocation(particle.rotationMatRow1, particle.rotationMatRow2, particle.rotationMatRow3, equatorPos);
+    float3 direction = normalize(rotatedPos - particle.position);
 
-    // Flip the X velocity if it is outside the bounds.
-    if((particle.position.x + particleSize > halfBoundsX && particle.velocity.x > 0) 
-        || (particle.position.x - particleSize < -halfBoundsX && particle.velocity.x < 0)) {
-        particle.velocity.x *= -1;
-    }
+    particle.theta += deltaTime;
+    particle.position += driftSpeed * direction * deltaTime;
+    
+    // particle.life -= deltaTime;
+    // particle.position += driftSpeed * particle.velocity * deltaTime;
 
-    // Flip the Y velocity if it is outside the bounds.
-    if((particle.position.y + particleSize > halfBoundsY && particle.velocity.y > 0) 
-        || (particle.position.y - particleSize < -halfBoundsY && particle.velocity.y < 0)) {
-        particle.velocity.y *= -1;
-    }
+    // // TODO check if particle is near the player and then give it a rotation axis and ignore the velocity.
+
+    // // Flip the X velocity if it is outside the bounds.
+    // if((particle.position.x + particleSize > halfBoundsX && particle.velocity.x > 0) 
+    //     || (particle.position.x - particleSize < -halfBoundsX && particle.velocity.x < 0)) {
+    //     particle.velocity.x *= -1;
+    // }
+
+    // // Flip the Y velocity if it is outside the bounds.
+    // if((particle.position.y + particleSize > halfBoundsY && particle.velocity.y > 0) 
+    //     || (particle.position.y - particleSize < -halfBoundsY && particle.velocity.y < 0)) {
+    //     particle.velocity.y *= -1;
+    // }
 
     particleBuffer[id.x] = particle;
 }
+
+

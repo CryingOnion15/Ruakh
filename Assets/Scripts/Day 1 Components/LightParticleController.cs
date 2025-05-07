@@ -4,12 +4,16 @@ public class LightParticleController : MonoBehaviour
 {
     public struct LightParticle
     {
+        public Vector3 rotationMatRow1;
+        public Vector3 rotationMatRow2;
+        public Vector3 rotationMatRow3;
         public Vector3 position;
         public Vector3 velocity;
+        public float theta;
         public float life;
     }
 
-    const int PARTICLE_SIZE = 7 * sizeof(float);
+    const int PARTICLE_SIZE = 17 * sizeof(float);
 
     [Header("Intial Values Properties")]
     public int particleCount = 500;
@@ -64,6 +68,20 @@ public class LightParticleController : MonoBehaviour
             particleArray[i].velocity.y = Mathf.Sin(angle);
             particleArray[i].velocity.z = 0;
 
+            particleArray[i].rotationMatRow1.x = 1;
+            particleArray[i].rotationMatRow1.y = 0;
+            particleArray[i].rotationMatRow1.z = 0;
+
+            particleArray[i].rotationMatRow2.x = 0;
+            particleArray[i].rotationMatRow2.y = Mathf.Cos(angle);
+            particleArray[i].rotationMatRow2.z = -Mathf.Sin(angle);
+
+            particleArray[i].rotationMatRow3.x = 0;
+            particleArray[i].rotationMatRow3.y = Mathf.Sin(angle);
+            particleArray[i].rotationMatRow3.z = Mathf.Cos(angle);
+            
+            particleArray[i].theta = angle;
+
             // Initial life value
             particleArray[i].life = 10;
         }
@@ -84,6 +102,7 @@ public class LightParticleController : MonoBehaviour
         compShader.SetFloat("driftSpeed", (float)driftSpeed);
         compShader.SetFloat("halfBoundsX", (float)spawnBoundsX / 2);
         compShader.SetFloat("halfBoundsY", (float)spawnBoundsY / 2);
+        compShader.SetFloat("orbitSize", 100.0f);
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
         particleVertAndFrag.SetFloat("particleSize", (float)particleSize);

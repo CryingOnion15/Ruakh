@@ -24,9 +24,13 @@
 
             struct LightParticle
             {
+                float3 rotationMatRow1;
+                float3 rotationMatRow2;
+                float3 rotationMatRow3;
                 float3 position;
                 float3 velocity;
-                float  life;
+                float theta;
+                float life;
             };
 
             // Buffer
