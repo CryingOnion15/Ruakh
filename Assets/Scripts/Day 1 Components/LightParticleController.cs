@@ -23,6 +23,7 @@ public class LightParticleController : MonoBehaviour
     public int spawnBoundsY = 100;
     public int driftSpeed = 10;
     public int particleSize = 10;
+    public float orbitSize = 30.0f;
     public Color particleColor = Color.white;
 
     [Header("Materials and Shader Properties")]
@@ -62,25 +63,36 @@ public class LightParticleController : MonoBehaviour
             particleArray[i].position.y = xyz.y;
             particleArray[i].position.z = xyz.z;
 
-            float angle = Random.value * 360 * 180 / Mathf.PI;
+            float velTheta = Random.value * 2 * Mathf.PI;
 
-            particleArray[i].velocity.x = Mathf.Cos(angle);
-            particleArray[i].velocity.y = Mathf.Sin(angle);
+            particleArray[i].velocity.x = Mathf.Cos(velTheta);
+            particleArray[i].velocity.y = Mathf.Sin(velTheta);
             particleArray[i].velocity.z = 0;
 
-            particleArray[i].rotationMatRow1.x = 1;
-            particleArray[i].rotationMatRow1.y = 0;
-            particleArray[i].rotationMatRow1.z = 0;
+            float xTheta = Random.value * 2 * Mathf.PI;
+            float yTheta = Random.value * 2 * Mathf.PI;
+            float zTheta = Random.value * 2 * Mathf.PI;
 
-            particleArray[i].rotationMatRow2.x = 0;
-            particleArray[i].rotationMatRow2.y = Mathf.Cos(angle);
-            particleArray[i].rotationMatRow2.z = -Mathf.Sin(angle);
+            float cosx = Mathf.Cos(xTheta);
+            float sinx = Mathf.Sin(xTheta);
+            float cosy = Mathf.Cos(yTheta);
+            float siny = Mathf.Sin(yTheta);
+            float cosz = Mathf.Cos(zTheta);
+            float sinz = Mathf.Sin(zTheta);
 
-            particleArray[i].rotationMatRow3.x = 0;
-            particleArray[i].rotationMatRow3.y = Mathf.Sin(angle);
-            particleArray[i].rotationMatRow3.z = Mathf.Cos(angle);
+            particleArray[i].rotationMatRow1.x = cosy * cosz;
+            particleArray[i].rotationMatRow1.y = cosy * -sinz;
+            particleArray[i].rotationMatRow1.z = siny;
+
+            particleArray[i].rotationMatRow2.x = cosx * sinz;
+            particleArray[i].rotationMatRow2.y = cosx * cosz;
+            particleArray[i].rotationMatRow2.z = -sinx * cosy;
+
+            particleArray[i].rotationMatRow3.x = cosx * -siny * cosz + sinx * sinz;
+            particleArray[i].rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
+            particleArray[i].rotationMatRow3.z = cosx * cosy;
             
-            particleArray[i].theta = angle;
+            particleArray[i].theta = Random.value * 2 * Mathf.PI;
 
             // Initial life value
             particleArray[i].life = 10;
@@ -102,7 +114,9 @@ public class LightParticleController : MonoBehaviour
         compShader.SetFloat("driftSpeed", (float)driftSpeed);
         compShader.SetFloat("halfBoundsX", (float)spawnBoundsX / 2);
         compShader.SetFloat("halfBoundsY", (float)spawnBoundsY / 2);
-        compShader.SetFloat("orbitSize", 100.0f);
+        compShader.SetFloat("orbitSize", orbitSize);
+        compShader.SetVector("playerLoc", transform.position);
+        compShader.SetFloat("captureRadius", orbitSize + 50f);
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
         particleVertAndFrag.SetFloat("particleSize", (float)particleSize);
