@@ -9,21 +9,23 @@ struct LightParticle
     float3 position;
     float3 velocity;
     float theta;
-    float life;
 };
 
 // Read Write Structured buffer that will set our particles locations.
 RWStructuredBuffer<LightParticle> particleBuffer;
 
-// Set the deltaTime from the CPU.
+// floats.
 float deltaTime;
 float driftSpeed;
 float particleSize;
 float halfBoundsX;
 float halfBoundsY;
 float orbitSize;
-float playerLoc;
+float followSpeed;
 float captureRadius;
+
+// Vectors
+float3 playerLoc;
 
 // Constants
 static const float PI = 3.14159265358979323846;
@@ -51,11 +53,10 @@ void MoveObital(inout LightParticle particle) {
     float3 direction = normalize((playerLoc + rotatedPos) - particle.position);
 
     particle.theta += deltaTime;
-    particle.position += driftSpeed * direction * deltaTime;
+    particle.position += followSpeed * direction * deltaTime;
 }
 
 void MoveDrift(inout LightParticle particle) {
-    particle.life -= deltaTime;
     particle.position += driftSpeed * particle.velocity * deltaTime;
 
     // TODO check if particle is near the player and then give it a rotation axis and ignore the velocity.
@@ -78,7 +79,10 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
 {
     LightParticle particle = particleBuffer[id.x];
 
-    bool isInside = dot(particle.position - playerLoc, particle.position - playerLoc) <= captureRadius * captureRadius;
+    float circX = pow(particle.position.x - playerLoc.x, 2);
+    float circY = pow(particle.position.y - playerLoc.y, 2);
+    float circZ = pow(particle.position.z - playerLoc.z, 2);
+    bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
 
     if(isInside) {
         MoveObital(particle);

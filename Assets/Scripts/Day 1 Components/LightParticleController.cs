@@ -10,10 +10,9 @@ public class LightParticleController : MonoBehaviour
         public Vector3 position;
         public Vector3 velocity;
         public float theta;
-        public float life;
     }
 
-    const int PARTICLE_SIZE = 17 * sizeof(float);
+    const int PARTICLE_SIZE = 16 * sizeof(float);
 
     [Header("Intial Values Properties")]
     public int particleCount = 500;
@@ -21,14 +20,19 @@ public class LightParticleController : MonoBehaviour
     // Define the spawn bounds of a particle.
     public int spawnBoundsX = 100;
     public int spawnBoundsY = 100;
-    public int driftSpeed = 10;
+    public float driftSpeed = 10;
+    public float followSpeed = 100f;
     public int particleSize = 10;
     public float orbitSize = 30.0f;
+    public float captureRadius = 30.0f;
     public Color particleColor = Color.white;
 
     [Header("Materials and Shader Properties")]
     public Material particleVertAndFrag;
     public ComputeShader compShader;
+
+    [Header("Player")]
+    public Transform playerTransform;
 
     protected int kernalID;
     protected ComputeBuffer particleBuffer;
@@ -91,11 +95,8 @@ public class LightParticleController : MonoBehaviour
             particleArray[i].rotationMatRow3.x = cosx * -siny * cosz + sinx * sinz;
             particleArray[i].rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
             particleArray[i].rotationMatRow3.z = cosx * cosy;
-            
-            particleArray[i].theta = Random.value * 2 * Mathf.PI;
 
-            // Initial life value
-            particleArray[i].life = 10;
+            particleArray[i].theta = Random.value * 2 * Mathf.PI;
         }
     }
 
@@ -111,12 +112,13 @@ public class LightParticleController : MonoBehaviour
         groupSizeX = Mathf.CeilToInt((float)particleCount / (float)threadX);
 
         compShader.SetBuffer(kernalID, "particleBuffer", particleBuffer);
-        compShader.SetFloat("driftSpeed", (float)driftSpeed);
+        compShader.SetFloat("driftSpeed", driftSpeed);
+        compShader.SetFloat("followSpeed", followSpeed);
         compShader.SetFloat("halfBoundsX", (float)spawnBoundsX / 2);
         compShader.SetFloat("halfBoundsY", (float)spawnBoundsY / 2);
         compShader.SetFloat("orbitSize", orbitSize);
-        compShader.SetVector("playerLoc", transform.position);
-        compShader.SetFloat("captureRadius", orbitSize + 50f);
+        compShader.SetVector("playerLoc", playerTransform.position);
+        compShader.SetFloat("captureRadius", captureRadius);
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
         particleVertAndFrag.SetFloat("particleSize", (float)particleSize);
@@ -140,6 +142,7 @@ public class LightParticleController : MonoBehaviour
     void Update()
     {
         compShader.SetFloat("deltaTime", Time.deltaTime);
+        compShader.SetVector("playerLoc", playerTransform.position);
         compShader.Dispatch(kernalID, groupSizeX, 1, 1);
 
         particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);

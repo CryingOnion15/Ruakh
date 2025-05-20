@@ -30,7 +30,6 @@
                 float3 position;
                 float3 velocity;
                 float theta;
-                float life;
             };
 
             // Buffer

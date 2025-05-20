@@ -5,9 +5,19 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.PlayerLoop;
 
+public enum MovementAxis
+{
+    XY,
+    XZ,
+    YZ,
+}
+
 [RequireComponent(typeof(Rigidbody))]
 public class HolySpiritController2D : MonoBehaviour
 {
+    [SerializeField]
+    protected MovementAxis axis = MovementAxis.XZ;
+
     [SerializeField]
     protected float moveSpeed = 50;
 
@@ -78,7 +88,20 @@ public class HolySpiritController2D : MonoBehaviour
     public void OnMove(InputAction.CallbackContext input)
     {
         Vector2 inputDirection = input.ReadValue<Vector2>();
-        forceDirection.x = inputDirection.x;
-        forceDirection.z = inputDirection.y;
+        switch (axis)
+        {
+            case MovementAxis.XY:
+                forceDirection.x = inputDirection.x;
+                forceDirection.y = inputDirection.y;
+                break;
+            case MovementAxis.XZ:
+                forceDirection.x = inputDirection.x;
+                forceDirection.z = inputDirection.y;
+                break;
+            case MovementAxis.YZ:
+                forceDirection.y = inputDirection.x;
+                forceDirection.z = inputDirection.y;
+                break;
+        }
     }
 }
