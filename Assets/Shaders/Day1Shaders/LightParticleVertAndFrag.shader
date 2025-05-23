@@ -30,6 +30,7 @@
                 float3 position;
                 float3 velocity;
                 float theta;
+                float alpha;
             };
 
             // Buffer
@@ -55,6 +56,7 @@
             {
                 float4 pos : SV_POSITION;
                 float2 uv  : TEXCOORD0;
+                float4 color : COLOR;
             };
 
             static const float2 quadUVs[6] = {
@@ -103,12 +105,15 @@
                 OUT.pos = TransformObjectToHClip(float4(offsetWS, 1.0));
                 OUT.uv = quadUVs[vertexInQuad];
 
+                _Color.a = p.alpha;
+                OUT.color = _Color;
+
                 return OUT;
             }
 
             float4 frag(Varyings IN) : SV_Target
             {
-                return tex2D(_MainTex, IN.uv) * _Color;
+                return tex2D(_MainTex, IN.uv) * IN.color;
             }
 
             float4 TransformObjectToHClip(float4 posOS)

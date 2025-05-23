@@ -10,9 +10,10 @@ public class LightParticleController : MonoBehaviour
         public Vector3 position;
         public Vector3 velocity;
         public float theta;
+        public float alpha;
     }
 
-    const int PARTICLE_SIZE = 16 * sizeof(float);
+    const int PARTICLE_SIZE = 17 * sizeof(float);
 
     [Header("Intial Values Properties")]
     public int particleCount = 500;
@@ -35,10 +36,20 @@ public class LightParticleController : MonoBehaviour
     public Transform playerTransform;
 
     protected int kernalID;
+    protected int spawnKernalID;
     protected ComputeBuffer particleBuffer;
     protected int groupSizeX;
     protected Bounds renderBounds;
     protected LightParticle[] particleArray;
+
+    // Test Variables (Testing spawning of particles)
+    protected bool spawningParticles = false;
+    protected float spawnTime = 1f;
+    protected float internalTimer = 0;
+
+    // Debug/Refactor variables.
+    protected int maxSpawnDispatcher = 30;
+    protected int spawnCount = 0;
 
     // Start is called before the first frame update
     void Start()
@@ -59,44 +70,28 @@ public class LightParticleController : MonoBehaviour
 
         for (int i = 0; i < particleCount; i++)
         {
-            float x = Random.value * spawnBoundsX - (spawnBoundsX / 2);
-            float y = Random.value * spawnBoundsY - (spawnBoundsY / 2);
-            Vector3 xyz = new Vector3(x, y, 0);
+            particleArray[i].position.x = 0;
+            particleArray[i].position.y = 0;
+            particleArray[i].position.z = 0;
 
-            particleArray[i].position.x = xyz.x;
-            particleArray[i].position.y = xyz.y;
-            particleArray[i].position.z = xyz.z;
-
-            float velTheta = Random.value * 2 * Mathf.PI;
-
-            particleArray[i].velocity.x = Mathf.Cos(velTheta);
-            particleArray[i].velocity.y = Mathf.Sin(velTheta);
+            particleArray[i].velocity.x = 0;
+            particleArray[i].velocity.y = 0;
             particleArray[i].velocity.z = 0;
 
-            float xTheta = Random.value * 2 * Mathf.PI;
-            float yTheta = Random.value * 2 * Mathf.PI;
-            float zTheta = Random.value * 2 * Mathf.PI;
+            particleArray[i].rotationMatRow1.x = 0;
+            particleArray[i].rotationMatRow1.y = 0;
+            particleArray[i].rotationMatRow1.z = 0;
 
-            float cosx = Mathf.Cos(xTheta);
-            float sinx = Mathf.Sin(xTheta);
-            float cosy = Mathf.Cos(yTheta);
-            float siny = Mathf.Sin(yTheta);
-            float cosz = Mathf.Cos(zTheta);
-            float sinz = Mathf.Sin(zTheta);
+            particleArray[i].rotationMatRow2.x = 0;
+            particleArray[i].rotationMatRow2.y = 0;
+            particleArray[i].rotationMatRow2.z = 0;
 
-            particleArray[i].rotationMatRow1.x = cosy * cosz;
-            particleArray[i].rotationMatRow1.y = cosy * -sinz;
-            particleArray[i].rotationMatRow1.z = siny;
+            particleArray[i].rotationMatRow3.x = 0;
+            particleArray[i].rotationMatRow3.y = 0;
+            particleArray[i].rotationMatRow3.z = 0;
 
-            particleArray[i].rotationMatRow2.x = cosx * sinz;
-            particleArray[i].rotationMatRow2.y = cosx * cosz;
-            particleArray[i].rotationMatRow2.z = -sinx * cosy;
-
-            particleArray[i].rotationMatRow3.x = cosx * -siny * cosz + sinx * sinz;
-            particleArray[i].rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
-            particleArray[i].rotationMatRow3.z = cosx * cosy;
-
-            particleArray[i].theta = Random.value * 2 * Mathf.PI;
+            particleArray[i].theta = 0;
+            particleArray[i].alpha = 0;
         }
     }
 
@@ -106,12 +101,14 @@ public class LightParticleController : MonoBehaviour
         particleBuffer.SetData(particleArray);
 
         kernalID = compShader.FindKernel("CSParticleMove");
+        spawnKernalID = compShader.FindKernel("SpawnParticleSet");
 
         uint threadX;
         compShader.GetKernelThreadGroupSizes(kernalID, out threadX, out _, out _);
         groupSizeX = Mathf.CeilToInt((float)particleCount / (float)threadX);
 
         compShader.SetBuffer(kernalID, "particleBuffer", particleBuffer);
+        compShader.SetBuffer(spawnKernalID, "particleBuffer", particleBuffer);
         compShader.SetFloat("driftSpeed", driftSpeed);
         compShader.SetFloat("followSpeed", followSpeed);
         compShader.SetFloat("halfBoundsX", (float)spawnBoundsX / 2);
@@ -119,6 +116,9 @@ public class LightParticleController : MonoBehaviour
         compShader.SetFloat("orbitSize", orbitSize);
         compShader.SetVector("playerLoc", playerTransform.position);
         compShader.SetFloat("captureRadius", captureRadius);
+        compShader.SetInt("randomSeed", (int)Random.Range(0, 9999));
+        compShader.SetInt("particleCount", particleCount);
+        compShader.SetInt("spawnBurstAmount", 10);
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
         particleVertAndFrag.SetFloat("particleSize", (float)particleSize);
@@ -143,6 +143,19 @@ public class LightParticleController : MonoBehaviour
     {
         compShader.SetFloat("deltaTime", Time.deltaTime);
         compShader.SetVector("playerLoc", playerTransform.position);
+
+        if (spawnCount < maxSpawnDispatcher)
+        {
+            if (internalTimer >= spawnTime)
+            {
+                DispathSpawn();
+            }
+            else
+            {
+                internalTimer += Time.deltaTime;
+            }
+        }
+
         compShader.Dispatch(kernalID, groupSizeX, 1, 1);
 
         particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);
@@ -155,6 +168,13 @@ public class LightParticleController : MonoBehaviour
             MeshTopology.Triangles,
             particleCount * 6
         );
+    }
+
+    void DispathSpawn() {
+        compShader.SetInt("groupID", spawnCount);
+        compShader.Dispatch(spawnKernalID, groupSizeX, 1, 1);
+        internalTimer = 0;
+        spawnCount++;
     }
 
     void OnDrawGizmos()
