@@ -173,7 +173,7 @@ void SpawnParticleSet (uint3 id : SV_DispatchThreadID)
         SetRandomParticleVelocity(particle, id.x);
         SetRandomParticleAxis(particle, id.x);
 
-        particle.alpha += deltaTime / 4;
+        particle.alpha = deltaTime / 4;
     }
 
     particleBuffer[id.x] = particle;

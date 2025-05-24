@@ -28,6 +28,10 @@ public class LightParticleController : MonoBehaviour
     public float captureRadius = 30.0f;
     public Color particleColor = Color.white;
 
+    [Header("Spawning Properties")]
+    public int spawnBurstAmount = 10;
+    public float burstRate = 1f;
+
     [Header("Materials and Shader Properties")]
     public Material particleVertAndFrag;
     public ComputeShader compShader;
@@ -42,14 +46,17 @@ public class LightParticleController : MonoBehaviour
     protected Bounds renderBounds;
     protected LightParticle[] particleArray;
 
-    // Test Variables (Testing spawning of particles)
-    protected bool spawningParticles = false;
-    protected float spawnTime = 1f;
-    protected float internalTimer = 0;
+    /*** Spawning Variables ***/
+    protected float internalSpawnBurstTimer = 0;
 
-    // Debug/Refactor variables.
-    protected int maxSpawnDispatcher = 30;
+    // Maximum amount of time the spawn burst need to happen. Calculated.
+    protected int maxSpawnDispatcher = 0;
+
+    // How many times spawn has been dispatched.
     protected int spawnCount = 0;
+
+    /*** Debug Variables ***/
+    protected Vector3 NOORBITPOS = Vector3.one * -10000;
 
     // Start is called before the first frame update
     void Start()
@@ -62,6 +69,8 @@ public class LightParticleController : MonoBehaviour
         particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);
         particleVertAndFrag.SetVector("cameraUp", Camera.main.transform.up);
         particleVertAndFrag.SetVector("cameraForward", Camera.main.transform.forward);
+
+        maxSpawnDispatcher = Mathf.CeilToInt(particleCount / spawnBurstAmount);
     }
 
     protected void IntializeParticles()
@@ -114,11 +123,11 @@ public class LightParticleController : MonoBehaviour
         compShader.SetFloat("halfBoundsX", (float)spawnBoundsX / 2);
         compShader.SetFloat("halfBoundsY", (float)spawnBoundsY / 2);
         compShader.SetFloat("orbitSize", orbitSize);
-        compShader.SetVector("playerLoc", playerTransform.position);
         compShader.SetFloat("captureRadius", captureRadius);
         compShader.SetInt("randomSeed", (int)Random.Range(0, 9999));
         compShader.SetInt("particleCount", particleCount);
-        compShader.SetInt("spawnBurstAmount", 10);
+        compShader.SetInt("spawnBurstAmount", spawnBurstAmount);
+        SetPlayerLoc();
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
         particleVertAndFrag.SetFloat("particleSize", (float)particleSize);
@@ -128,6 +137,18 @@ public class LightParticleController : MonoBehaviour
     protected void InitializeRenderParams()
     {
         renderBounds = new Bounds(Vector3.zero, 10000 * Vector3.one);
+    }
+
+    void SetPlayerLoc()
+    {
+        if (playerTransform.gameObject.activeSelf)
+        {
+            compShader.SetVector("playerLoc", playerTransform.position);
+        }
+        else
+        {
+            compShader.SetVector("playerLoc", NOORBITPOS);
+        }
     }
 
     void OnDestroy()
@@ -142,26 +163,39 @@ public class LightParticleController : MonoBehaviour
     void Update()
     {
         compShader.SetFloat("deltaTime", Time.deltaTime);
-        compShader.SetVector("playerLoc", playerTransform.position);
+        SetPlayerLoc();
 
         if (spawnCount < maxSpawnDispatcher)
         {
-            if (internalTimer >= spawnTime)
-            {
-                DispathSpawn();
-            }
-            else
-            {
-                internalTimer += Time.deltaTime;
-            }
+            checkSpawnDispatch();
         }
 
         compShader.Dispatch(kernalID, groupSizeX, 1, 1);
 
+        drawParticles();
+    }
+
+    protected void checkSpawnDispatch()
+    {
+        if (internalSpawnBurstTimer >= burstRate)
+        {
+            DispatchSpawn();
+        }
+        else
+        {
+            internalSpawnBurstTimer += Time.deltaTime;
+        }
+    }
+
+    protected void updateCameraProperties()
+    {
         particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);
         particleVertAndFrag.SetVector("cameraUp", Camera.main.transform.up);
         particleVertAndFrag.SetVector("cameraForward", Camera.main.transform.forward);
+    }
 
+    protected void drawParticles()
+    {
         Graphics.DrawProcedural(
             particleVertAndFrag,
             renderBounds,
@@ -170,10 +204,11 @@ public class LightParticleController : MonoBehaviour
         );
     }
 
-    void DispathSpawn() {
-        compShader.SetInt("groupID", spawnCount);
+    void DispatchSpawn()
+    {
+        compShader.SetInt("groupIndex", spawnCount);
         compShader.Dispatch(spawnKernalID, groupSizeX, 1, 1);
-        internalTimer = 0;
+        internalSpawnBurstTimer = 0;
         spawnCount++;
     }
 
