@@ -11,6 +11,7 @@ struct LightParticle
     float3 velocity;
     float theta;
     float alpha;
+    int captured;
 };
 
 // Read Write Structured buffer that will store individual particle data.
@@ -34,14 +35,20 @@ int randomSeed;
 
 // Vectors
 float3 playerLoc;
+float3 upVector;
+float3 rightVector;
+
+// Control
+bool captureEnabled;
 
 // Constants
 static const float PI = 3.14159265358979323846;
 static const float PHI = (PI / 2);
 static const float SINEPHI = sin(PHI);
 
-float random(uint seed)
+float random(uint seed, uint salt)
 {
+    seed ^= salt;
     seed ^= seed >> 17;
     seed *= 0xed5ad4bb;
     seed ^= seed >> 11;
@@ -73,40 +80,60 @@ void MoveObital(inout LightParticle particle) {
     float3 direction = normalize((playerLoc + rotatedPos) - particle.position);
 
     particle.theta += deltaTime;
-    particle.position += followSpeed * direction * deltaTime;
+    particle.position = lerp(particle.position, playerLoc + rotatedPos, 1.0 - exp(-followSpeed * deltaTime));
 }
 
 void MoveDrift(inout LightParticle particle) {
     particle.position += driftSpeed * particle.velocity * deltaTime;
 
+    float dotX = dot(particle.position, rightVector);
+    float dotY = dot(particle.position, upVector);
+
     // Flip the X velocity if it is outside the bounds.
-    if((particle.position.x + particleSize > halfBoundsX && particle.velocity.x > 0) 
-        || (particle.position.x - particleSize < -halfBoundsX && particle.velocity.x < 0)) {
-        particle.velocity.x *= -1;
+    // Hits the right side of the bound
+    if(dotX + particleSize > halfBoundsX) {
+        particle.velocity = reflect(particle.velocity, -rightVector);
+    }
+
+    // Hits the left side of the bound
+    if(dotX - particleSize < -halfBoundsX) {
+        particle.velocity = reflect(particle.velocity, rightVector);
     }
 
     // Flip the Y velocity if it is outside the bounds.
-    if((particle.position.y + particleSize > halfBoundsY && particle.velocity.y > 0) 
-        || (particle.position.y - particleSize < -halfBoundsY && particle.velocity.y < 0)) {
-        particle.velocity.y *= -1;
+    // Hits the uppper side of the bound.
+    if(dotY + particleSize > halfBoundsY) {
+        particle.velocity = reflect(particle.velocity, -upVector);
+    }
+
+    // Hits the lower side of the bound.
+    if(dotY - particleSize < -halfBoundsY) {
+       particle.velocity = reflect(particle.velocity, upVector);
     }
 }
 
 void SetRandomParticleLocation(inout LightParticle particle, uint thread) {
-    particle.position.x = random((randomSeed + thread) * 17) * halfBoundsX * 2 - halfBoundsX;
-    particle.position.y = random((randomSeed + thread) * 31) * halfBoundsY * 2 - halfBoundsY;
+    float x = random((randomSeed + thread), 17) * halfBoundsX * 2 - halfBoundsX;
+    float y = random((randomSeed + thread), 31) * halfBoundsY * 2 - halfBoundsY;
+
+    float3 xLocal = x * rightVector;
+    float3 yLocal = y * upVector;
+
+    particle.position = xLocal + yLocal;
 }
 
 void SetRandomParticleVelocity(inout LightParticle particle, uint thread) {
-    float theta = random((randomSeed + thread) * 48) * PI * 2;
-    particle.velocity.x = cos(theta);
-    particle.velocity.y = sin(theta);
+    float theta = random((randomSeed + thread), 48) * PI * 2;
+    float3 velX = cos(theta) * rightVector;
+    float3 velY = sin(theta) * upVector;
+
+    particle.velocity = velX + velY;
 }
 
 void SetRandomParticleAxis(inout LightParticle particle, uint thread) {
-    float xTheta = random((randomSeed + thread) * 19);
-    float yTheta = random((randomSeed + thread) * 20);
-    float zTheta = random((randomSeed + thread) * 21);
+    float xTheta = random((randomSeed + thread), 19) * 2 * PI;
+    float yTheta = random((randomSeed + thread), 20) * 2 * PI;
+    float zTheta = random((randomSeed + thread), 21) * 2 * PI;
 
     float cosx = cos(xTheta);
     float sinx = sin(xTheta);
@@ -127,7 +154,7 @@ void SetRandomParticleAxis(inout LightParticle particle, uint thread) {
     particle.rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
     particle.rotationMatRow3.z = cosx * cosy;
 
-    particle.theta = random((randomSeed + thread) * 22) * 2 * PI;
+    particle.theta = random((randomSeed + thread), 22) * 2 * PI;
 }
 
 [numthreads(256,1,1)]
@@ -139,14 +166,22 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
         if(particle.alpha < 1 && particle.alpha != 0) {
             particle.alpha += deltaTime / 4;
         } else {
-            float circX = pow(particle.position.x - playerLoc.x, 2);
-            float circY = pow(particle.position.y - playerLoc.y, 2);
-            float circZ = pow(particle.position.z - playerLoc.z, 2);
-            bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
+            if(captureEnabled) {
+                float circX = pow(particle.position.x - playerLoc.x, 2);
+                float circY = pow(particle.position.y - playerLoc.y, 2);
+                float circZ = pow(particle.position.z - playerLoc.z, 2);
+                bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
 
-            if(isInside) {
-                MoveObital(particle);
-            } else {
+                if(isInside) {
+                    particle.captured = 1;
+                    MoveObital(particle);
+                } else {
+                    particle.captured = 0;
+                    MoveDrift(particle);
+                }
+            }
+            else {
+                particle.captured = 0;
                 MoveDrift(particle);
             }
         }

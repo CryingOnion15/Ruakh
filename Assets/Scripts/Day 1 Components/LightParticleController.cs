@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class LightParticleController : MonoBehaviour
 {
@@ -11,9 +14,10 @@ public class LightParticleController : MonoBehaviour
         public Vector3 velocity;
         public float theta;
         public float alpha;
+        public int captured;
     }
 
-    const int PARTICLE_SIZE = 17 * sizeof(float);
+    const int PARTICLE_SIZE = 17 * sizeof(float) + sizeof(int);
 
     [Header("Intial Values Properties")]
     public int particleCount = 500;
@@ -23,7 +27,7 @@ public class LightParticleController : MonoBehaviour
     public int spawnBoundsY = 100;
     public float driftSpeed = 10;
     public float followSpeed = 100f;
-    public int particleSize = 10;
+    public float particleSize = 10;
     public float orbitSize = 30.0f;
     public float captureRadius = 30.0f;
     public Color particleColor = Color.white;
@@ -34,6 +38,7 @@ public class LightParticleController : MonoBehaviour
 
     [Header("Materials and Shader Properties")]
     public Material particleVertAndFrag;
+    public Camera viewingCamera;
     public ComputeShader compShader;
 
     [Header("Player")]
@@ -56,7 +61,7 @@ public class LightParticleController : MonoBehaviour
     protected int spawnCount = 0;
 
     /*** Debug Variables ***/
-    protected Vector3 NOORBITPOS = Vector3.one * -10000;
+    // protected Vector3 NOORBITPOS = Vector3.one * -10000;
 
     // Start is called before the first frame update
     void Start()
@@ -66,11 +71,17 @@ public class LightParticleController : MonoBehaviour
         InitializeBuffer();
         InitializeRenderParams();
 
-        particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);
-        particleVertAndFrag.SetVector("cameraUp", Camera.main.transform.up);
-        particleVertAndFrag.SetVector("cameraForward", Camera.main.transform.forward);
+        compShader.SetVector("upVector", transform.up);
+        compShader.SetVector("rightVector", transform.right);
+        compShader.SetBool("captureEnabled", false);
+
+        particleVertAndFrag.SetVector("cameraRight", viewingCamera.transform.right);
+        particleVertAndFrag.SetVector("cameraUp", viewingCamera.transform.up);
+        particleVertAndFrag.SetVector("cameraForward", viewingCamera.transform.forward);
 
         maxSpawnDispatcher = Mathf.CeilToInt(particleCount / spawnBurstAmount);
+
+        Invoke("checkAllParticlesCaptured", .5f);
     }
 
     protected void IntializeParticles()
@@ -130,7 +141,7 @@ public class LightParticleController : MonoBehaviour
         SetPlayerLoc();
 
         particleVertAndFrag.SetBuffer("particleBuffer", particleBuffer);
-        particleVertAndFrag.SetFloat("particleSize", (float)particleSize);
+        particleVertAndFrag.SetFloat("particleSize", particleSize);
         particleVertAndFrag.SetVector("_Color", particleColor);
     }
 
@@ -141,14 +152,10 @@ public class LightParticleController : MonoBehaviour
 
     void SetPlayerLoc()
     {
-        if (playerTransform.gameObject.activeSelf)
-        {
-            compShader.SetVector("playerLoc", playerTransform.position);
-        }
-        else
-        {
-            compShader.SetVector("playerLoc", NOORBITPOS);
-        }
+        compShader.SetVector(
+            "playerLoc",
+            transform.InverseTransformPoint(playerTransform.position)
+        );
     }
 
     void OnDestroy()
@@ -157,6 +164,8 @@ public class LightParticleController : MonoBehaviour
         {
             particleBuffer.Release();
         }
+
+        CancelInvoke("checkAllParticlesCaptured");
     }
 
     // Update is called once per frame
@@ -189,9 +198,9 @@ public class LightParticleController : MonoBehaviour
 
     protected void updateCameraProperties()
     {
-        particleVertAndFrag.SetVector("cameraRight", Camera.main.transform.right);
-        particleVertAndFrag.SetVector("cameraUp", Camera.main.transform.up);
-        particleVertAndFrag.SetVector("cameraForward", Camera.main.transform.forward);
+        particleVertAndFrag.SetVector("cameraRight", viewingCamera.transform.right);
+        particleVertAndFrag.SetVector("cameraUp", viewingCamera.transform.up);
+        particleVertAndFrag.SetVector("cameraForward", viewingCamera.transform.forward);
     }
 
     protected void drawParticles()
@@ -212,8 +221,52 @@ public class LightParticleController : MonoBehaviour
         spawnCount++;
     }
 
+    public void EnableCapture()
+    {
+        compShader.SetBool("captureEnabled", true);
+    }
+
+    public void DisableCapture()
+    {
+        compShader.SetBool("captureEnabled", false);
+    }
+
+    protected void checkAllParticlesCaptured()
+    {
+        AsyncGPUReadback.Request(particleBuffer, readAllParticles);
+    }
+
+    protected void readAllParticles(AsyncGPUReadbackRequest request)
+    {
+        if (request.hasError)
+        {
+            Debug.LogError("GPU request Error");
+            return;
+        }
+
+        var data = request.GetData<LightParticle>();
+        int captureCount = 0;
+
+        for (int i = 0; i < data.Length; i++)
+        {
+            if (data[i].captured == 1)
+                captureCount++;
+        }
+
+        if (captureCount == particleCount)
+        {
+            Debug.Log("All Particles Captured.");
+        }
+        else
+        {
+            Debug.Log("Recheck.");
+            Invoke("checkAllParticlesCaptured", .5f);
+        }
+    }
+
     void OnDrawGizmos()
     {
+        Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireCube(Vector3.zero, Vector3.one * 10000f);
 

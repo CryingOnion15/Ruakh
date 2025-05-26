@@ -31,6 +31,7 @@
                 float3 velocity;
                 float theta;
                 float alpha;
+                int captured;
             };
 
             // Buffer

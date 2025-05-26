@@ -1,0 +1,26 @@
+#pragma kernel CSMain
+
+StructuredBuffer<float3> vertices;
+StructuredBuffer<int> indices;
+RWStructuredBuffer<float4> colors;
+
+int triangleCount;
+
+[numthreads(64,1,1)]
+void CSMain(uint id : SV_DispatchThreadID)
+{
+    if (id >= triangleCount) return;
+
+    // Each thread handles one triangle
+    int i0 = indices[id.x * 3 + 0];
+    int i1 = indices[id.x * 3 + 1];
+    int i2 = indices[id.x * 3 + 2];
+
+    // Example: Assign a unique color per triangle (could be anything)
+    float4 triColor = float4(id.x / (float)triangleCount, 0.5, 1.0 - id.x / (float)triangleCount, 1);
+
+    // Write the same color to all 3 vertices of this triangle
+    colors[i0] = triColor;
+    colors[i1] = triColor;
+    colors[i2] = triColor;
+}
