@@ -1,10 +1,5 @@
 Shader "Custom/LightParticleVertAndFrag"
 {
-    // Properties
-    // {
-
-    // }
-
     SubShader
     {
         Tags { "RenderType" = "Transparent" "Queue"="Transparent" "RenderPipeline" = "UniversalPipeline" }
@@ -23,11 +18,11 @@ Shader "Custom/LightParticleVertAndFrag"
 
             // Buffer
             StructuredBuffer<float3> vertices;
+            StructuredBuffer<int> indices;
             StructuredBuffer<float4> colors;
 
             struct Attributes
             {
-                float3 position : POSITION;
                 uint vertexID : SV_VertexID;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -35,7 +30,6 @@ Shader "Custom/LightParticleVertAndFrag"
             struct Varyings
             {
                 float4 pos : SV_POSITION;
-                //float2 uv  : TEXCOORD0;
                 float4 color : COLOR;
             };     
 
@@ -43,10 +37,13 @@ Shader "Custom/LightParticleVertAndFrag"
             {
                 Varyings OUT;
 
-                // float3 vertexPos = vertices[IN.vertexID]; 
-                OUT.pos = TransformObjectToHClip(IN.position);
-                // Get the color for the vertex id.
-                OUT.color = colors[IN.vertexID];
+                int index = indices[IN.vertexID];
+
+                float3 vertexPos = vertices[index]; 
+                OUT.pos = TransformObjectToHClip(vertexPos);
+
+                int triangleID = IN.vertexID / 3;
+                OUT.color = colors[triangleID];
 
                 return OUT;
             }
