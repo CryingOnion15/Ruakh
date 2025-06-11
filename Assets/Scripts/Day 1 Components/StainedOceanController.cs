@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [ExecuteAlways]
@@ -7,7 +8,7 @@ public class StainedOceanController : MonoBehaviour
     public Mesh oceanMesh;
 
     [Header("Shader")]
-    public ComputeShader compShader;
+    //public ComputeShader compShader;
     public Material material;
 
     [Header("Colors")]
@@ -21,17 +22,16 @@ public class StainedOceanController : MonoBehaviour
     protected ComputeBuffer indicesBuffer;
     protected ComputeBuffer colorBuffer;
 
+    protected Dictionary<(int, int), List<int>> edgeMap;
+    protected List<int>[] adjacencyList;
+
     // Update is called once per frame
     void Update()
     {
-        int kernelIndex = compShader.FindKernel("CSMain");
-
-        // Dispatch with enough thread groups to cover all triangles
-        int threadGroups = Mathf.CeilToInt(triangleCount / 64f);
-        compShader.Dispatch(kernelIndex, threadGroups, 1, 1);
-
         material.SetBuffer("colors", colorBuffer);
         material.SetBuffer("indices", indicesBuffer);
+
+        // TODO update the vertices buffer to allign the to the local node position.
         material.SetBuffer("vertices", vertexBuffer);
 
         Graphics.DrawProcedural(
@@ -44,8 +44,7 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
-        // VFX
-        //vfx.SetMesh("OceanMesh", oceanMesh);
+        edgeMap = new Dictionary<(int, int), List<int>>();
 
         Vector3[] vertices = oceanMesh.vertices;
         int[] indices = oceanMesh.triangles;
@@ -56,26 +55,22 @@ public class StainedOceanController : MonoBehaviour
         // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
         vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
         indicesBuffer = new ComputeBuffer(indices.Length, sizeof(int));
-        colorBuffer = new ComputeBuffer(triangleCount, sizeof(float) * 4);
+        colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
 
         // Set initial Buffer Data
         vertexBuffer.SetData(vertices);
         indicesBuffer.SetData(indices);
 
-        Color[] colors = new Color[triangleCount];
-        for (int i = 0; i < colors.Length; i++)
-            colors[i] = Color.white;
+        int[] colors = new int[triangleCount];
+        for (int i = 0; i < triangleCount; i++)
+        {
+            colors[i] = -1;
+        }
+
+        CreateAdjacencyList(indices);
+        SetColorAdjacency(colors);
 
         colorBuffer.SetData(colors);
-
-        int kernel = compShader.FindKernel("CSMain");
-
-        // Set Buffer Data
-        compShader.SetBuffer(kernel, "indices", indicesBuffer);
-        compShader.SetBuffer(kernel, "colors", colorBuffer);
-        compShader.SetVector("color1", color1);
-        compShader.SetVector("color2", color2);
-        compShader.SetVector("color3", color3);
 
         material.SetBuffer("colors", colorBuffer);
         material.SetBuffer("indices", indicesBuffer);
@@ -87,5 +82,82 @@ public class StainedOceanController : MonoBehaviour
         indicesBuffer?.Release();
         colorBuffer?.Release();
         vertexBuffer?.Release();
+    }
+
+    void CreateAdjacencyList(int[] triIndecies)
+    {
+        for (int tri = 0; tri < triangleCount; tri++)
+        {
+            int v1 = triIndecies[tri * 3];
+            int v2 = triIndecies[tri * 3 + 1];
+            int v3 = triIndecies[tri * 3 + 2];
+
+            AddEdge(v1, v2, tri);
+            AddEdge(v2, v3, tri);
+            AddEdge(v3, v1, tri);
+        }
+
+        adjacencyList = new List<int>[triangleCount];
+        for (int i = 0; i < triangleCount; i++)
+        {
+            adjacencyList[i] = new List<int>();
+        }
+
+        foreach (var entry in edgeMap.Values)
+        {
+            var tris = entry;
+            if (tris.Count == 2)
+            {
+                int t1 = tris[0];
+                int t2 = tris[1];
+                adjacencyList[t1].Add(t2);
+                adjacencyList[t2].Add(t1);
+            }
+        }
+    }
+
+    void AddEdge(int e1, int e2, int triIndex)
+    {
+        // Make a consistent reference to the edge.
+        var edge = (Mathf.Min(e1, e2), Mathf.Max(e1, e2));
+
+        if (!edgeMap.ContainsKey(edge))
+        {
+            edgeMap[edge] = new List<int>();
+        }
+
+        edgeMap[edge].Add(triIndex);
+    }
+
+    void SetColorAdjacency(int[] colors)
+    {
+        int startingPoint = Mathf.FloorToInt(Random.value * triangleCount);
+
+        for (int i = 0; i < triangleCount; i++)
+        {
+            int tri = i;
+            List<int> usedColors = new List<int>();
+
+            foreach (var adjTri in adjacencyList[tri])
+            {
+                int color = colors[adjTri];
+                if (color != -1)
+                    usedColors.Add(color);
+            }
+
+            for (int color = 0; color < 4; color++)
+            {
+                if (!usedColors.Contains(color))
+                {
+                    colors[tri] = color;
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i < triangleCount; i++)
+        {
+            Debug.Log(colors[i]);
+        }
     }
 }
