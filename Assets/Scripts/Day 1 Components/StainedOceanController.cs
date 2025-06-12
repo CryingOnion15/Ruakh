@@ -11,19 +11,17 @@ public class StainedOceanController : MonoBehaviour
     //public ComputeShader compShader;
     public Material material;
 
-    [Header("Colors")]
-    public Color color1;
-    public Color color2;
-    public Color color3;
-
     protected int triangleCount = 0;
 
     protected ComputeBuffer vertexBuffer;
     protected ComputeBuffer indicesBuffer;
     protected ComputeBuffer colorBuffer;
 
-    protected Dictionary<(int, int), List<int>> edgeMap;
+    protected Dictionary<(Vector3, Vector3), List<int>> edgeMap;
     protected List<int>[] adjacencyList;
+
+    protected Vector3[] meshVertices;
+    protected int[] meshTriIndices;
 
     // Update is called once per frame
     void Update()
@@ -44,22 +42,22 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
-        edgeMap = new Dictionary<(int, int), List<int>>();
+        edgeMap = new Dictionary<(Vector3, Vector3), List<int>>();
 
-        Vector3[] vertices = oceanMesh.vertices;
-        int[] indices = oceanMesh.triangles;
+        meshVertices = oceanMesh.vertices;
+        meshTriIndices = oceanMesh.triangles;
 
-        int vertexCount = vertices.Length;
-        triangleCount = indices.Length / 3;
+        int vertexCount = meshVertices.Length;
+        triangleCount = meshTriIndices.Length / 3;
 
         // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
         vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
-        indicesBuffer = new ComputeBuffer(indices.Length, sizeof(int));
+        indicesBuffer = new ComputeBuffer(meshTriIndices.Length, sizeof(int));
         colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
 
         // Set initial Buffer Data
-        vertexBuffer.SetData(vertices);
-        indicesBuffer.SetData(indices);
+        vertexBuffer.SetData(meshVertices);
+        indicesBuffer.SetData(meshTriIndices);
 
         int[] colors = new int[triangleCount];
         for (int i = 0; i < triangleCount; i++)
@@ -67,7 +65,7 @@ public class StainedOceanController : MonoBehaviour
             colors[i] = -1;
         }
 
-        CreateAdjacencyList(indices);
+        CreateAdjacencyList();
         SetColorAdjacency(colors);
 
         colorBuffer.SetData(colors);
@@ -84,13 +82,13 @@ public class StainedOceanController : MonoBehaviour
         vertexBuffer?.Release();
     }
 
-    void CreateAdjacencyList(int[] triIndecies)
+    void CreateAdjacencyList()
     {
         for (int tri = 0; tri < triangleCount; tri++)
         {
-            int v1 = triIndecies[tri * 3];
-            int v2 = triIndecies[tri * 3 + 1];
-            int v3 = triIndecies[tri * 3 + 2];
+            int v1 = meshTriIndices[tri * 3];
+            int v2 = meshTriIndices[tri * 3 + 1];
+            int v3 = meshTriIndices[tri * 3 + 2];
 
             AddEdge(v1, v2, tri);
             AddEdge(v2, v3, tri);
@@ -118,8 +116,11 @@ public class StainedOceanController : MonoBehaviour
 
     void AddEdge(int e1, int e2, int triIndex)
     {
+        Vector3 vert1 = meshVertices[e1];
+        Vector3 vert2 = meshVertices[e2];
+
         // Make a consistent reference to the edge.
-        var edge = (Mathf.Min(e1, e2), Mathf.Max(e1, e2));
+        var edge = (VertexMin(vert1, vert2), VertexMax(vert1, vert2));
 
         if (!edgeMap.ContainsKey(edge))
         {
@@ -127,6 +128,30 @@ public class StainedOceanController : MonoBehaviour
         }
 
         edgeMap[edge].Add(triIndex);
+    }
+
+    Vector3 VertexMin(Vector3 a, Vector3 b)
+    {
+        if (a.x < b.x) return a;
+        if (a.x > b.x) return b;
+
+        if (a.y < b.y) return a;
+        if (a.y > b.y) return b;
+
+        if (a.z < b.z) return a;
+        return b;
+    }
+
+    Vector3 VertexMax(Vector3 a, Vector3 b)
+    {
+        if (a.x > b.x) return a;
+        if (a.x < b.x) return b;
+
+        if (a.y > b.y) return a;
+        if (a.y < b.y) return b;
+
+        if (a.z > b.z) return a;
+        return b;
     }
 
     void SetColorAdjacency(int[] colors)
