@@ -825,9 +825,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 02649428e632058438941d086d19ca1a, type: 3}
   material: {fileID: 2100000, guid: 5daf74282de54c04a94de2b6b960be0a, type: 2}
-  color1: {r: 0.026383411, g: 0.03899561, b: 0.28930807, a: 1}
-  color2: {r: 0.03987181, g: 0.03987181, b: 0.20125782, a: 1}
-  color3: {r: 0.015723258, g: 0.018117698, b: 0.09433961, a: 1}
 --- !u!4 &1960990976
 Transform:
   m_ObjectHideFlags: 0

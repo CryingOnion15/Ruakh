@@ -16,12 +16,14 @@ public class StainedOceanController : MonoBehaviour
     protected ComputeBuffer vertexBuffer;
     protected ComputeBuffer indicesBuffer;
     protected ComputeBuffer colorBuffer;
+    protected ComputeBuffer uvBuffer;
 
     protected Dictionary<(Vector3, Vector3), List<int>> edgeMap;
     protected List<int>[] adjacencyList;
 
     protected Vector3[] meshVertices;
     protected int[] meshTriIndices;
+    protected List<Vector2> meshUvs = new List<Vector2>();
 
     // Update is called once per frame
     void Update()
@@ -54,10 +56,14 @@ public class StainedOceanController : MonoBehaviour
         vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
         indicesBuffer = new ComputeBuffer(meshTriIndices.Length, sizeof(int));
         colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
+        uvBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 2);
+
+        oceanMesh.GetUVs(0, meshUvs);
 
         // Set initial Buffer Data
         vertexBuffer.SetData(meshVertices);
         indicesBuffer.SetData(meshTriIndices);
+        uvBuffer.SetData(meshUvs);
 
         int[] colors = new int[triangleCount];
         for (int i = 0; i < triangleCount; i++)
@@ -73,6 +79,7 @@ public class StainedOceanController : MonoBehaviour
         material.SetBuffer("colors", colorBuffer);
         material.SetBuffer("indices", indicesBuffer);
         material.SetBuffer("vertices", vertexBuffer);
+        material.SetBuffer("uvs", uvBuffer);
     }
 
     void OnDisable()
@@ -156,7 +163,8 @@ public class StainedOceanController : MonoBehaviour
 
     void SetColorAdjacency(int[] colors)
     {
-        int startingPoint = Mathf.FloorToInt(Random.value * triangleCount);
+        // TODO implement later to introduce randomness.
+        // int startingPoint = Mathf.FloorToInt(Random.value * triangleCount);
 
         for (int i = 0; i < triangleCount; i++)
         {
@@ -178,11 +186,6 @@ public class StainedOceanController : MonoBehaviour
                     break;
                 }
             }
-        }
-
-        for (int i = 0; i < triangleCount; i++)
-        {
-            Debug.Log(colors[i]);
         }
     }
 }
