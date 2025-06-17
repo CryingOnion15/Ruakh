@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [ExecuteAlways]
@@ -14,9 +15,9 @@ public class StainedOceanController : MonoBehaviour
     protected int triangleCount = 0;
 
     protected ComputeBuffer vertexBuffer;
-    protected ComputeBuffer indicesBuffer;
     protected ComputeBuffer colorBuffer;
     protected ComputeBuffer uvBuffer;
+    protected ComputeBuffer baryCoordsBuffer;
 
     protected Dictionary<(Vector3, Vector3), List<int>> edgeMap;
     protected List<int>[] adjacencyList;
@@ -29,8 +30,6 @@ public class StainedOceanController : MonoBehaviour
     void Update()
     {
         material.SetBuffer("colors", colorBuffer);
-        material.SetBuffer("indices", indicesBuffer);
-
         // TODO update the vertices buffer to allign the to the local node position.
         material.SetBuffer("vertices", vertexBuffer);
 
@@ -49,21 +48,45 @@ public class StainedOceanController : MonoBehaviour
         meshVertices = oceanMesh.vertices;
         meshTriIndices = oceanMesh.triangles;
 
-        int vertexCount = meshVertices.Length;
+        int vertexCount = meshTriIndices.Length;
         triangleCount = meshTriIndices.Length / 3;
 
         // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
         vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
-        indicesBuffer = new ComputeBuffer(meshTriIndices.Length, sizeof(int));
         colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
         uvBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 2);
+        baryCoordsBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
 
         oceanMesh.GetUVs(0, meshUvs);
 
         // Set initial Buffer Data
-        vertexBuffer.SetData(meshVertices);
-        indicesBuffer.SetData(meshTriIndices);
-        uvBuffer.SetData(meshUvs);
+
+
+        // Create the data based of of the triangle indices array.
+        Vector3[] baryCoords = new Vector3[vertexCount];
+        Vector3[] vertexLocations = new Vector3[vertexCount];
+        Vector2[] uvLocations = new Vector2[vertexCount];
+
+        for (int i = 0; i < triangleCount; i++)
+        {
+            int triStart = i * 3;
+
+            baryCoords[triStart] = new Vector3(1f, 0f, 0f);
+            baryCoords[triStart + 1] = new Vector3(0f, 1f, 0f);
+            baryCoords[triStart + 2] = new Vector3(0f, 0f, 1f);
+
+            vertexLocations[triStart] = meshVertices[meshTriIndices[triStart]];
+            vertexLocations[triStart + 1] = meshVertices[meshTriIndices[triStart + 1]];
+            vertexLocations[triStart + 2] = meshVertices[meshTriIndices[triStart + 2]];
+
+            uvLocations[triStart] = meshUvs[meshTriIndices[triStart]];
+            uvLocations[triStart + 1] = meshUvs[meshTriIndices[triStart + 1]];
+            uvLocations[triStart + 2] = meshUvs[meshTriIndices[triStart + 2]];
+        }
+
+        baryCoordsBuffer.SetData(baryCoords);
+        vertexBuffer.SetData(vertexLocations);
+        uvBuffer.SetData(uvLocations);
 
         int[] colors = new int[triangleCount];
         for (int i = 0; i < triangleCount; i++)
@@ -77,16 +100,17 @@ public class StainedOceanController : MonoBehaviour
         colorBuffer.SetData(colors);
 
         material.SetBuffer("colors", colorBuffer);
-        material.SetBuffer("indices", indicesBuffer);
         material.SetBuffer("vertices", vertexBuffer);
+        material.SetBuffer("baryCoords", baryCoordsBuffer);
         material.SetBuffer("uvs", uvBuffer);
     }
 
     void OnDisable()
     {
-        indicesBuffer?.Release();
         colorBuffer?.Release();
         vertexBuffer?.Release();
+        uvBuffer?.Release();
+        baryCoordsBuffer?.Release();
     }
 
     void CreateAdjacencyList()
@@ -139,25 +163,35 @@ public class StainedOceanController : MonoBehaviour
 
     Vector3 VertexMin(Vector3 a, Vector3 b)
     {
-        if (a.x < b.x) return a;
-        if (a.x > b.x) return b;
+        if (a.x < b.x)
+            return a;
+        if (a.x > b.x)
+            return b;
 
-        if (a.y < b.y) return a;
-        if (a.y > b.y) return b;
+        if (a.y < b.y)
+            return a;
+        if (a.y > b.y)
+            return b;
 
-        if (a.z < b.z) return a;
+        if (a.z < b.z)
+            return a;
         return b;
     }
 
     Vector3 VertexMax(Vector3 a, Vector3 b)
     {
-        if (a.x > b.x) return a;
-        if (a.x < b.x) return b;
+        if (a.x > b.x)
+            return a;
+        if (a.x < b.x)
+            return b;
 
-        if (a.y > b.y) return a;
-        if (a.y < b.y) return b;
+        if (a.y > b.y)
+            return a;
+        if (a.y < b.y)
+            return b;
 
-        if (a.z > b.z) return a;
+        if (a.z > b.z)
+            return a;
         return b;
     }
 
