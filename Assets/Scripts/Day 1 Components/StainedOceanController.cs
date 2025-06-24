@@ -12,6 +12,8 @@ public class StainedOceanController : MonoBehaviour
     //public ComputeShader compShader;
     public Material material;
 
+    public float cellUpdateTime = .2f;
+
     protected int triangleCount = 0;
 
     protected ComputeBuffer vertexBuffer;
@@ -26,12 +28,19 @@ public class StainedOceanController : MonoBehaviour
     protected int[] meshTriIndices;
     protected List<Vector2> meshUvs = new List<Vector2>();
 
+    protected int currentCell = 0;
+
     // Update is called once per frame
     void Update()
     {
         material.SetBuffer("colors", colorBuffer);
         // TODO update the vertices buffer to allign the to the local node position.
         material.SetBuffer("vertices", vertexBuffer);
+
+        material.SetVector("xAxis", transform.right);
+        material.SetVector("yAxis", transform.up);
+        material.SetVector("zAxis", transform.forward);
+        material.SetVector("world", transform.position);
 
         Graphics.DrawProcedural(
             material,
@@ -57,11 +66,9 @@ public class StainedOceanController : MonoBehaviour
         uvBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 2);
         baryCoordsBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
 
+        /***** Set initial Buffer Data *****/
+
         oceanMesh.GetUVs(0, meshUvs);
-
-        // Set initial Buffer Data
-
-
         // Create the data based of of the triangle indices array.
         Vector3[] baryCoords = new Vector3[vertexCount];
         Vector3[] vertexLocations = new Vector3[vertexCount];
@@ -103,6 +110,16 @@ public class StainedOceanController : MonoBehaviour
         material.SetBuffer("vertices", vertexBuffer);
         material.SetBuffer("baryCoords", baryCoordsBuffer);
         material.SetBuffer("uvs", uvBuffer);
+        material.SetFloat("cellSize", 256);
+
+        InvokeRepeating("updateCell", 0, cellUpdateTime);
+    }
+
+    void updateCell()
+    {
+        material.SetInt("cellIndex", currentCell);
+
+        currentCell = (currentCell + 1) % 16;
     }
 
     void OnDisable()
@@ -111,6 +128,7 @@ public class StainedOceanController : MonoBehaviour
         vertexBuffer?.Release();
         uvBuffer?.Release();
         baryCoordsBuffer?.Release();
+        CancelInvoke("updateCell");
     }
 
     void CreateAdjacencyList()
