@@ -29,7 +29,7 @@ Shader "Custom/LightParticleVertAndFrag"
             StructuredBuffer<float3> vertices;
             StructuredBuffer<float3> baryCoords;
             StructuredBuffer<float2> uvs;
-            StructuredBuffer<int> colors;
+            StructuredBuffer<uint> colors;
 
             // Colors
             float4 color1;
@@ -43,7 +43,8 @@ Shader "Custom/LightParticleVertAndFrag"
             SamplerState sampler_WaveTexture;
 
             float EdgeThreshold;
-            int cellIndex;
+            uint cellIndex;
+            float cellDelta;
             float cellSize;
 
             // Axis & Positioning
@@ -68,18 +69,18 @@ Shader "Custom/LightParticleVertAndFrag"
 
             };
             
-            float4 GetColor(int index) {
+            float4 GetColor(uint index) {
                 if(index == 0) return color1;
                 if(index == 1) return color2;
                 if(index == 2) return color3;
                 return color4;
             }
 
-            float3 GetDisplacement(int triIndex) {
-                int base = triIndex * 3;
+            float3 GetDisplacement(uint triIndex) {
+                uint base = triIndex * 3;
 
-                int x = cellIndex % 4;
-                int y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
+                uint x = cellIndex % 4;
+                uint y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
 
                 float2 uvLocal = float2(x, y ) * 0.25;
 
@@ -100,7 +101,7 @@ Shader "Custom/LightParticleVertAndFrag"
                 float4 samp3 = WaveTexture.SampleLevel(sampler_WaveTexture, sampleUV3, 0);
 
                 float4 avg = (samp1 + samp2 + samp3) / 3.0;
-                float avgStep = step(.66, dot(avg.rgb, float3(0.2126, 0.7152, 0.0722)));
+                float avgStep = dot(avg.rgb, float3(0.2126, 0.7152, 0.0722));
                 return Displacement * avg * avgStep * zAxis;
             }
 
@@ -108,11 +109,11 @@ Shader "Custom/LightParticleVertAndFrag"
             {
                 Varyings OUT;
 
-                int index = IN.vertexID;
+                uint index = IN.vertexID;
 
                 float3 vertexPos = vertices[index];
 
-                int triIndex = index / 3;
+                uint triIndex = index / 3;
                 float3 displacement = GetDisplacement(triIndex);
 
                 // Get the world rotation.
@@ -122,7 +123,7 @@ Shader "Custom/LightParticleVertAndFrag"
                 
                 OUT.pos = TransformObjectToHClip(right + up + forward + world + displacement);
 
-                int colorIndex = colors[IN.vertexID / 3];
+                uint colorIndex = colors[IN.vertexID / 3];
 
                 OUT.uv = uvs[index];
                 OUT.color = GetColor(colorIndex);
@@ -136,8 +137,8 @@ Shader "Custom/LightParticleVertAndFrag"
             {
                 float minBary = min(IN.bary.x, min(IN.bary.y, IN.bary.z));
 
-                int x = cellIndex % 4;
-                int y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
+                uint x = cellIndex % 4;
+                uint y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
 
                 float2 uvLocal = float2(x * 0.25, y * 0.25);
                 float2 clampedUV = clamp(IN.uv * .25 + uvLocal, 0.0, 1.0);
@@ -151,7 +152,6 @@ Shader "Custom/LightParticleVertAndFrag"
                 } else {
                     return IN.color;
                 }
-                
             }
 
             ENDHLSL

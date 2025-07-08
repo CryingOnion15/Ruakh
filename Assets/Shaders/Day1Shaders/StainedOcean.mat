@@ -33,7 +33,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - Displacement: 50
+    - Displacement: 5
     - EdgeThreshold: 0.015
     m_Colors:
     - EdgeColor: {r: 0, g: 1, b: 0.9249382, a: 0.53333336}

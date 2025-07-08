@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
+using NUnit.Framework.Constraints;
 using UnityEngine;
 
 [ExecuteAlways]
@@ -11,6 +11,9 @@ public class StainedOceanController : MonoBehaviour
     [Header("Shader")]
     //public ComputeShader compShader;
     public Material material;
+
+    [Header("Screen Space Data")]
+    public Camera cameraRef;
 
     public float cellUpdateTime = .2f;
 
@@ -29,6 +32,11 @@ public class StainedOceanController : MonoBehaviour
     protected List<Vector2> meshUvs = new List<Vector2>();
 
     protected int currentCell = 0;
+
+    // Camera Data
+    protected float cameraDistance;
+    protected float frustrumHeight;
+    protected float frustrumWidth;
 
     // Update is called once per frame
     void Update()
@@ -52,6 +60,12 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
+        Vector3 direction = transform.position - cameraRef.transform.position;
+        cameraDistance = Vector3.Dot(cameraRef.transform.forward, direction);
+        frustrumHeight =
+            2.0f * cameraDistance * Mathf.Tan(cameraRef.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        frustrumWidth = frustrumHeight * cameraRef.aspect;
+
         edgeMap = new Dictionary<(Vector3, Vector3), List<int>>();
 
         meshVertices = oceanMesh.vertices;
@@ -71,7 +85,7 @@ public class StainedOceanController : MonoBehaviour
         oceanMesh.GetUVs(0, meshUvs);
         // Create the data based of of the triangle indices array.
         Vector3[] baryCoords = new Vector3[vertexCount];
-        Vector3[] vertexLocations = new Vector3[vertexCount];
+        Vector3[] vertexLocations;
         Vector2[] uvLocations = new Vector2[vertexCount];
 
         for (int i = 0; i < triangleCount; i++)
@@ -82,14 +96,12 @@ public class StainedOceanController : MonoBehaviour
             baryCoords[triStart + 1] = new Vector3(0f, 1f, 0f);
             baryCoords[triStart + 2] = new Vector3(0f, 0f, 1f);
 
-            vertexLocations[triStart] = meshVertices[meshTriIndices[triStart]];
-            vertexLocations[triStart + 1] = meshVertices[meshTriIndices[triStart + 1]];
-            vertexLocations[triStart + 2] = meshVertices[meshTriIndices[triStart + 2]];
-
             uvLocations[triStart] = meshUvs[meshTriIndices[triStart]];
             uvLocations[triStart + 1] = meshUvs[meshTriIndices[triStart + 1]];
             uvLocations[triStart + 2] = meshUvs[meshTriIndices[triStart + 2]];
         }
+
+        vertexLocations = GetVerticesToScreenSize(uvLocations);
 
         baryCoordsBuffer.SetData(baryCoords);
         vertexBuffer.SetData(vertexLocations);
@@ -113,6 +125,22 @@ public class StainedOceanController : MonoBehaviour
         material.SetFloat("cellSize", 256);
 
         InvokeRepeating("updateCell", 0, cellUpdateTime);
+    }
+
+    Vector3[] GetVerticesToScreenSize(Vector2[] uvs)
+    {
+        Vector3[] vertices = new Vector3[uvs.Length];
+        float halfWidth = frustrumWidth / 2;
+        float halfHeight = frustrumHeight / 2;
+
+        for (int i = 0; i < uvs.Length; i++)
+        {
+            float x = uvs[i].x * frustrumWidth - halfWidth;
+            float y = uvs[i].y * frustrumHeight - halfHeight;
+            vertices[i] = new Vector3(x, y, 0);
+        }
+
+        return vertices;
     }
 
     void updateCell()
