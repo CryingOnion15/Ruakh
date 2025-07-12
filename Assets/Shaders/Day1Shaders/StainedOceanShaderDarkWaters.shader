@@ -1,4 +1,4 @@
-Shader "Custom/LightParticleVertAndFrag"
+Shader "Custom/StainedOceanDarkWaters"
 {
     Properties{
         color1 ("Color 1", Color) = (1,1,1,1)
@@ -16,6 +16,7 @@ Shader "Custom/LightParticleVertAndFrag"
 
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
+        //ZTest LEqual
 
         Pass
         {
@@ -133,7 +134,7 @@ Shader "Custom/LightParticleVertAndFrag"
                 float value = step(.9, luminance);
 
                 if(value == 1.0) {
-                    return minBary < EdgeThreshold ? EdgeColor : IN.color;
+                    return minBary < EdgeThreshold ? EdgeColor : IN.color;// + float4(0.05,0.05,0.05,0);
                 } else {
                     return IN.color;
                 }

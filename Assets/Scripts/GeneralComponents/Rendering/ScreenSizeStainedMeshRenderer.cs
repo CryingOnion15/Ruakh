@@ -12,6 +12,8 @@ public class StainedOceanController : MonoBehaviour
     //public ComputeShader compShader;
     public Material material;
 
+    public int sortingIndex;
+
     [Header("Screen Space Data")]
     public Camera cameraRef;
 
@@ -56,6 +58,8 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
+        //material.renderQueue = sortingIndex;
+
         Vector3 direction = transform.position - cameraRef.transform.position;
         cameraDistance = Vector3.Dot(cameraRef.transform.forward, direction);
         frustrumHeight =

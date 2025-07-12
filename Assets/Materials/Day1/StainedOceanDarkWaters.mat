@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: StainedOcean
+  m_Name: StainedOceanDarkWaters
   m_Shader: {fileID: 4800000, guid: 7e59ddf5672b90246b79229941632e4d, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -16,7 +16,7 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 3500
   stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - WaveTexture:
-        m_Texture: {fileID: 2800000, guid: 3499a6f314ec7ee4e8672b6c38f23817, type: 3}
+        m_Texture: {fileID: 8400000, guid: 404b92be8ddb2954aab412ac1c6ed00a, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -34,9 +34,9 @@ Material:
     m_Ints: []
     m_Floats:
     - Displacement: 5
-    - EdgeThreshold: 0.015
+    - EdgeThreshold: 0.03
     m_Colors:
-    - EdgeColor: {r: 0, g: 1, b: 0.9249382, a: 0.53333336}
+    - EdgeColor: {r: 1, g: 0.98039216, b: 0.627451, a: 1}
     - color1: {r: 0.011003822, g: 0.008069291, b: 0.1509434, a: 1}
     - color2: {r: 0.021757783, g: 0, b: 0.27672952, a: 1}
     - color3: {r: 0.10562691, g: 0.010798574, b: 0.26415092, a: 1}
