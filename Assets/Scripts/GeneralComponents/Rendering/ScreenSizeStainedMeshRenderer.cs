@@ -15,8 +15,6 @@ public class StainedOceanController : MonoBehaviour
     [Header("Screen Space Data")]
     public Camera cameraRef;
 
-    public float cellUpdateTime = .2f;
-
     protected int triangleCount = 0;
 
     protected ComputeBuffer vertexBuffer;
@@ -30,8 +28,6 @@ public class StainedOceanController : MonoBehaviour
     protected Vector3[] meshVertices;
     protected int[] meshTriIndices;
     protected List<Vector2> meshUvs = new List<Vector2>();
-
-    protected int currentCell = 0;
 
     // Camera Data
     protected float cameraDistance;
@@ -122,9 +118,6 @@ public class StainedOceanController : MonoBehaviour
         material.SetBuffer("vertices", vertexBuffer);
         material.SetBuffer("baryCoords", baryCoordsBuffer);
         material.SetBuffer("uvs", uvBuffer);
-        material.SetFloat("cellSize", 256);
-
-        InvokeRepeating("updateCell", 0, cellUpdateTime);
     }
 
     Vector3[] GetVerticesToScreenSize(Vector2[] uvs)
@@ -143,20 +136,12 @@ public class StainedOceanController : MonoBehaviour
         return vertices;
     }
 
-    void updateCell()
-    {
-        material.SetInt("cellIndex", currentCell);
-
-        currentCell = (currentCell + 1) % 16;
-    }
-
     void OnDisable()
     {
         colorBuffer?.Release();
         vertexBuffer?.Release();
         uvBuffer?.Release();
         baryCoordsBuffer?.Release();
-        CancelInvoke("updateCell");
     }
 
     void CreateAdjacencyList()

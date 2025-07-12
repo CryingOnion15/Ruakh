@@ -43,9 +43,6 @@ Shader "Custom/LightParticleVertAndFrag"
             SamplerState sampler_WaveTexture;
 
             float EdgeThreshold;
-            uint cellIndex;
-            float cellDelta;
-            float cellSize;
 
             // Axis & Positioning
             float3 xAxis;
@@ -79,26 +76,18 @@ Shader "Custom/LightParticleVertAndFrag"
             float3 GetDisplacement(uint triIndex) {
                 uint base = triIndex * 3;
 
-                uint x = cellIndex % 4;
-                uint y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
-
-                float2 uvLocal = float2(x, y ) * 0.25;
-
                 float2 uv1 = uvs[base];
-                float2 sampleUV1 = uv1 * .25 + uvLocal;
-                sampleUV1 = clamp(sampleUV1, uvLocal, uvLocal + .25);
+                uv1 = clamp(uv1, 0, 1);
 
                 float2 uv2 = uvs[base + 1];
-                float2 sampleUV2 = uv2 * .25 + uvLocal;
-                sampleUV2 = clamp(sampleUV2, uvLocal, uvLocal + .25);
+                uv2 = clamp(uv2, 0, 1);
 
                 float2 uv3 = uvs[base + 2];
-                float2 sampleUV3 = uv3 * .25 + uvLocal;
-                sampleUV3 = clamp(sampleUV3, uvLocal, uvLocal + .25);
+                uv3 = clamp(uv3, 0, 1);
 
-                float4 samp1 = WaveTexture.SampleLevel(sampler_WaveTexture, sampleUV1, 0);
-                float4 samp2 = WaveTexture.SampleLevel(sampler_WaveTexture, sampleUV2, 0);
-                float4 samp3 = WaveTexture.SampleLevel(sampler_WaveTexture, sampleUV3, 0);
+                float4 samp1 = WaveTexture.SampleLevel(sampler_WaveTexture, uv1, 0);
+                float4 samp2 = WaveTexture.SampleLevel(sampler_WaveTexture, uv2, 0);
+                float4 samp3 = WaveTexture.SampleLevel(sampler_WaveTexture, uv3, 0);
 
                 float4 avg = (samp1 + samp2 + samp3) / 3.0;
                 float avgStep = dot(avg.rgb, float3(0.2126, 0.7152, 0.0722));
@@ -137,11 +126,7 @@ Shader "Custom/LightParticleVertAndFrag"
             {
                 float minBary = min(IN.bary.x, min(IN.bary.y, IN.bary.z));
 
-                uint x = cellIndex % 4;
-                uint y = 3 - (cellIndex / 4); // We do 3 - () because we want the top down y index.
-
-                float2 uvLocal = float2(x * 0.25, y * 0.25);
-                float2 clampedUV = clamp(IN.uv * .25 + uvLocal, 0.0, 1.0);
+                float2 clampedUV = clamp(IN.uv, 0.0, 1.0);
 
                 float4 texColor = WaveTexture.SampleLevel(sampler_WaveTexture, clampedUV , 0);
                 float luminance = dot(texColor.rgb, float3(0.2126, 0.7152, 0.0722));
