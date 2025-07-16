@@ -12,8 +12,6 @@ public class StainedOceanController : MonoBehaviour
     //public ComputeShader compShader;
     public Material material;
 
-    public int sortingIndex;
-
     [Header("Screen Space Data")]
     public Camera cameraRef;
 
@@ -37,7 +35,7 @@ public class StainedOceanController : MonoBehaviour
     protected float frustrumWidth;
 
     // Update is called once per frame
-    void Update()
+    void OnRenderObject()
     {
         material.SetBuffer("colors", colorBuffer);
         // TODO update the vertices buffer to allign the to the local node position.
@@ -48,6 +46,7 @@ public class StainedOceanController : MonoBehaviour
         material.SetVector("zAxis", transform.forward);
         material.SetVector("world", transform.position);
 
+        material.SetPass(0);
         Graphics.DrawProcedural(
             material,
             new Bounds(Vector3.zero, Vector3.one * 10000),
@@ -58,8 +57,6 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
-        //material.renderQueue = sortingIndex;
-
         Vector3 direction = transform.position - cameraRef.transform.position;
         cameraDistance = Vector3.Dot(cameraRef.transform.forward, direction);
         frustrumHeight =

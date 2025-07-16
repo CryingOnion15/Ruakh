@@ -12,11 +12,12 @@ Shader "Custom/StainedOceanDarkWaters"
     }
     SubShader
     {
-        Tags { "RenderType" = "Transparent" "Queue"="Transparent" "RenderPipeline" = "UniversalPipeline" }
+        Tags {"Queue"="Transparent-3" "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" }
 
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
-        //ZTest LEqual
+        ZTest LEqual
+        Cull Off
 
         Pass
         {

@@ -136,7 +136,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!108 &732852296
 Light:
   m_ObjectHideFlags: 0
@@ -256,7 +256,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &782266695
 Transform:
   m_ObjectHideFlags: 0
@@ -318,7 +318,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &963531267
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -562,7 +562,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1143613612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -577,7 +577,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 684629aa2d46b7a4fbf02d70e5f9952c, type: 3}
   material: {fileID: 2100000, guid: bbfab5c16084a4d4dbe4b56d4b43f3f7, type: 2}
-  sortingIndex: 2999
   cameraRef: {fileID: 987173583}
 --- !u!4 &1143613613
 Transform:
@@ -588,7 +587,7 @@ Transform:
   m_GameObject: {fileID: 1143613611}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 2}
+  m_LocalPosition: {x: 0, y: 0, z: 48}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -624,7 +623,7 @@ Transform:
   m_GameObject: {fileID: 1244408255}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 600, y: 0, z: 0}
+  m_LocalPosition: {x: 600, y: 0, z: -111.5}
   m_LocalScale: {x: 20, y: 20, z: 20}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -782,7 +781,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1282756863
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5896,7 +5895,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 684629aa2d46b7a4fbf02d70e5f9952c, type: 3}
   material: {fileID: 2100000, guid: 5daf74282de54c04a94de2b6b960be0a, type: 2}
-  sortingIndex: 3000
   cameraRef: {fileID: 987173583}
 --- !u!4 &1960990976
 Transform:
@@ -5907,7 +5905,7 @@ Transform:
   m_GameObject: {fileID: 1960990974}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 50}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
