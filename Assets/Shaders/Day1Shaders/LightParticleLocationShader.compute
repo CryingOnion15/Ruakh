@@ -85,7 +85,7 @@ void MoveObital(inout LightParticle particle) {
 }
 
 void MoveToMidpoint(uint index, inout LightParticle particle) {
-    float3 midpoint = mul(midpointsBuffer[index]);
+    float3 midpoint = midpointsBuffer[index];
     float3 direction = midpoint - particle.position;
 
     particle.velocity = direction;

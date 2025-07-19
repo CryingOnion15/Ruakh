@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[ExecuteInEditMode]
 public class ParticleMidpointCalculator : MonoBehaviour
 {
     public Mesh mesh;
@@ -20,6 +21,9 @@ public class ParticleMidpointCalculator : MonoBehaviour
     protected float halfHeight;
     protected float halfWidth;
 
+    protected Matrix4x4 inverseView;
+    protected Matrix4x4 inverseProjetion;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -31,6 +35,12 @@ public class ParticleMidpointCalculator : MonoBehaviour
 
         halfWidth = frustrumWidth / 2;
         halfHeight = frustrumHeight / 2;
+
+        inverseView = Matrix4x4.Inverse(cameraRef.worldToCameraMatrix);
+        inverseProjetion = Matrix4x4.Inverse(cameraRef.projectionMatrix);
+
+        Debug.Log("Height: " + frustrumHeight);
+        Debug.Log("Width: " + frustrumWidth);
 
         meshTriIndices = mesh.triangles;
         mesh.GetUVs(0, meshUvs);
@@ -73,15 +83,13 @@ public class ParticleMidpointCalculator : MonoBehaviour
             }
             else
             {
-                int randomIndex = Mathf.FloorToInt(Random.value * validMidpoints.Count - .1f);
+                int randomIndex = Mathf.FloorToInt(Random.value * validMidpoints.Count - 1);
                 midpoints[i] = GetFrustrumLocation(validMidpoints[randomIndex]);
             }
         }
 
-        Debug.Log(midpoints.Length);
-
         ShuffleMidpoints(midpoints);
-        DEBUGPrintMidpoints(midpoints);
+        //DEBUGPrintMidpoints(midpoints);
 
         ComputeBufferMap.AssignBufferData("midpointsBuffer", midpoints);
         ComputeBufferMap.AssignBufferToComputerShader("midpointsBuffer", compShader, 0);
@@ -100,9 +108,9 @@ public class ParticleMidpointCalculator : MonoBehaviour
 
     Vector3 GetFrustrumLocation(Vector2 uv)
     {
-        float x = uv.x * frustrumWidth - halfWidth;
-        float y = uv.y * frustrumHeight - halfHeight;
-        return new Vector3(x, y, 0);
+        float x = (uv.x - .5f) * frustrumWidth;
+        float y = (uv.y - .5f) * frustrumHeight;
+        return cameraRef.transform.position + cameraRef.transform.rotation * (new Vector3(x, y, cameraDistance) / 10);
     }
 
     void DEBUGPrintMidpoints(Vector3[] midpoints)
@@ -112,6 +120,31 @@ public class ParticleMidpointCalculator : MonoBehaviour
             Debug.Log(midpoints[i]);
         }
     }
+
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        if (validMidpoints.Count == 0)
+        {
+            Vector3 worldPos = new Vector3(0, 0, -20);
+            Gizmos.DrawSphere(worldPos, 20f);
+            return;
+        }
+        else
+        {
+            Vector3 worldPos = new Vector3(0, 0, -20);
+            Gizmos.DrawSphere(worldPos, 20f);
+            return;
+        }
+
+        
+        foreach (var uv in validMidpoints)
+        {
+            Vector3 worldPos = GetFrustrumLocation(uv);
+            Gizmos.DrawSphere(worldPos, 1f);
+        }
+    }
+
 
     void OnDestroy()
     {
