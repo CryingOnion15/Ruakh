@@ -16,6 +16,7 @@ struct LightParticle
 
 // Read Write Structured buffer that will store individual particle data.
 RWStructuredBuffer<LightParticle> particleBuffer;
+RWStructuredBuffer<float3> midpointsBuffer;
 
 // Particle movement variables
 float deltaTime;
@@ -81,6 +82,15 @@ void MoveObital(inout LightParticle particle) {
 
     particle.theta += deltaTime;
     particle.position = lerp(particle.position, playerLoc + rotatedPos, 1.0 - exp(-followSpeed * deltaTime));
+}
+
+void MoveToMidpoint(uint index, inout LightParticle particle) {
+    float3 midpoint = mul(midpointsBuffer[index]);
+    float3 direction = midpoint - particle.position;
+
+    particle.velocity = direction;
+    particle.position += followSpeed * particle.velocity * deltaTime;
+    
 }
 
 void MoveDrift(inout LightParticle particle) {
@@ -167,18 +177,19 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
             particle.alpha += deltaTime / 4;
         } else {
             if(captureEnabled) {
-                float circX = pow(particle.position.x - playerLoc.x, 2);
-                float circY = pow(particle.position.y - playerLoc.y, 2);
-                float circZ = pow(particle.position.z - playerLoc.z, 2);
-                bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
+                MoveToMidpoint(id.x, particle);
+                // float circX = pow(particle.position.x - playerLoc.x, 2);
+                // float circY = pow(particle.position.y - playerLoc.y, 2);
+                // float circZ = pow(particle.position.z - playerLoc.z, 2);
+                // bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
 
-                if(isInside) {
-                    particle.captured = 1;
-                    MoveObital(particle);
-                } else {
-                    particle.captured = 0;
-                    MoveDrift(particle);
-                }
+                // if(isInside) {
+                //     particle.captured = 1;
+                //     MoveObital(particle);
+                // } else {
+                //     particle.captured = 0;
+                //     MoveDrift(particle);
+                // }
             }
             else {
                 particle.captured = 0;
