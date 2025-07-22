@@ -52,12 +52,12 @@ public class ParticleMidpointCalculator : MonoBehaviour
             int triStart = i * 3;
             Vector2 uv1 = meshUvs[meshTriIndices[triStart]];
             Vector2 uv2 = meshUvs[meshTriIndices[triStart + 1]];
-            Vector3 uv3 = meshUvs[meshTriIndices[triStart + 2]];
+            Vector2 uv3 = meshUvs[meshTriIndices[triStart + 2]];
 
             if (uv1.y >= .5 && uv2.y >= .5 && uv3.y >= .5)
             {
-                float midX = uv1.x + uv2.x + uv3.x / 3;
-                float midY = uv1.y + uv2.y + uv3.y / 3;
+                float midX = (uv1.x + uv2.x + uv3.x) / 3;
+                float midY = (uv1.y + uv2.y + uv3.y) / 3;
                 validMidpoints.Add(new Vector2(midX, midY));
             }
 
@@ -83,7 +83,7 @@ public class ParticleMidpointCalculator : MonoBehaviour
             }
             else
             {
-                int randomIndex = Mathf.FloorToInt(Random.value * validMidpoints.Count - 1);
+                int randomIndex = Mathf.FloorToInt(Random.value * (validMidpoints.Count - 1));
                 midpoints[i] = GetFrustrumLocation(validMidpoints[randomIndex]);
             }
         }
@@ -97,7 +97,7 @@ public class ParticleMidpointCalculator : MonoBehaviour
 
     void ShuffleMidpoints(Vector3[] midpoints)
     {
-        for (int i = 0; i < midpoints.Length; i++)
+        for (int i = 0; i < midpoints.Length - 1; i++)
         {
             int index = Random.Range(0, i + 1);
             Vector2 value = midpoints[index];
@@ -108,9 +108,10 @@ public class ParticleMidpointCalculator : MonoBehaviour
 
     Vector3 GetFrustrumLocation(Vector2 uv)
     {
-        float x = (uv.x - .5f) * frustrumWidth;
-        float y = (uv.y - .5f) * frustrumHeight;
-        return cameraRef.transform.position + cameraRef.transform.rotation * (new Vector3(x, y, cameraDistance) / 10);
+        float x = uv.x * frustrumWidth - halfWidth;
+        float y = uv.y * frustrumHeight - halfHeight;
+        return cameraRef.transform.position
+            + cameraRef.transform.rotation * new Vector3(x, y, cameraDistance);
     }
 
     void DEBUGPrintMidpoints(Vector3[] midpoints)
@@ -132,19 +133,15 @@ public class ParticleMidpointCalculator : MonoBehaviour
         }
         else
         {
-            Vector3 worldPos = new Vector3(0, 0, -20);
-            Gizmos.DrawSphere(worldPos, 20f);
-            return;
+            foreach (var uv in validMidpoints)
+            {
+                Vector3 worldPos = GetFrustrumLocation(uv);
+                Gizmos.DrawSphere(worldPos, 5f);
+            }
         }
 
-        
-        foreach (var uv in validMidpoints)
-        {
-            Vector3 worldPos = GetFrustrumLocation(uv);
-            Gizmos.DrawSphere(worldPos, 1f);
-        }
+        Gizmos.color = Color.green;
     }
-
 
     void OnDestroy()
     {
