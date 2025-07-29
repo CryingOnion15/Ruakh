@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public struct ComputeBufferGroup
@@ -106,6 +105,14 @@ public sealed class ComputeBufferMap
         if (bufferMap.ContainsKey(bufferName))
         {
             shader.SetBuffer(kernalIndex, bufferName, bufferMap[bufferName].buffer);
+        }
+    }
+
+    public static void AssignBufferToMaterial(string bufferName, Material mat)
+    {
+        if (bufferMap.ContainsKey(bufferName))
+        {
+            mat.SetBuffer(bufferName, bufferMap[bufferName].buffer);
         }
     }
 }

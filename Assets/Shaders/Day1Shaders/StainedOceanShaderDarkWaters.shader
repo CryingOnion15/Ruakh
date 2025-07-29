@@ -75,25 +75,14 @@ Shader "Custom/StainedOceanDarkWaters"
                 return color4;
             }
 
-            float3 GetDisplacement(uint triIndex) {
-                uint base = triIndex * 3;
-
-                float2 uv1 = uvs[base];
+            float3 GetDisplacement(uint index) {
+                float2 uv1 = uvs[index];
                 uv1 = clamp(uv1, 0, 1);
 
-                float2 uv2 = uvs[base + 1];
-                uv2 = clamp(uv2, 0, 1);
-
-                float2 uv3 = uvs[base + 2];
-                uv3 = clamp(uv3, 0, 1);
-
                 float4 samp1 = WaveTexture.SampleLevel(sampler_WaveTexture, uv1, 0);
-                float4 samp2 = WaveTexture.SampleLevel(sampler_WaveTexture, uv2, 0);
-                float4 samp3 = WaveTexture.SampleLevel(sampler_WaveTexture, uv3, 0);
 
-                float4 avg = (samp1 + samp2 + samp3) / 3.0;
-                float avgStep = dot(avg.rgb, float3(0.2126, 0.7152, 0.0722));
-                return Displacement * avg * avgStep * zAxis;
+                float avgStep = dot(samp1.rgb, float3(0.2126, 0.7152, 0.0722));
+                return Displacement * avgStep * -zAxis;
             }
 
             Varyings vert(Attributes IN)
@@ -103,9 +92,7 @@ Shader "Custom/StainedOceanDarkWaters"
                 uint index = IN.vertexID;
 
                 float3 vertexPos = vertices[index];
-
-                uint triIndex = index / 3;
-                float3 displacement = GetDisplacement(triIndex);
+                float3 displacement = GetDisplacement(index);
 
                 // Get the world rotation.
                 float3 right = vertexPos.x * xAxis;

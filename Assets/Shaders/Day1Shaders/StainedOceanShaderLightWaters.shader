@@ -30,7 +30,7 @@ Shader "Custom/StainedOceanLightWaters"
             StructuredBuffer<float3> vertices;
             StructuredBuffer<float3> baryCoords;
             StructuredBuffer<float2> uvs;
-            StructuredBuffer<uint> colors;
+            StructuredBuffer<uint> lightWatersColors;
 
             // Colors
             float4 color1;
@@ -68,31 +68,21 @@ Shader "Custom/StainedOceanLightWaters"
             };
             
             float4 GetColor(uint index) {
-                if(index == 0) return color1;
-                if(index == 1) return color2;
-                if(index == 2) return color3;
+                if(index == 0) return float4(0,0,0,0);
+                if(index == 1) return color1;
+                if(index == 2) return color2;
+                if(index == 3) return color3;
                 return color4;
             }
 
-            float3 GetDisplacement(uint triIndex) {
-                uint base = triIndex * 3;
-
-                float2 uv1 = uvs[base];
+             float3 GetDisplacement(uint index) {
+                float2 uv1 = uvs[index];
                 uv1 = clamp(uv1, 0, 1);
 
-                float2 uv2 = uvs[base + 1];
-                uv2 = clamp(uv2, 0, 1);
-
-                float2 uv3 = uvs[base + 2];
-                uv3 = clamp(uv3, 0, 1);
-
                 float4 samp1 = WaveTexture.SampleLevel(sampler_WaveTexture, uv1, 0);
-                float4 samp2 = WaveTexture.SampleLevel(sampler_WaveTexture, uv2, 0);
-                float4 samp3 = WaveTexture.SampleLevel(sampler_WaveTexture, uv3, 0);
 
-                float4 avg = (samp1 + samp2 + samp3) / 3.0;
-                float avgStep = dot(avg.rgb, float3(0.2126, 0.7152, 0.0722));
-                return Displacement * avg * avgStep * zAxis;
+                float avgStep = dot(samp1.rgb, float3(0.2126, 0.7152, 0.0722));
+                return Displacement * avgStep * -zAxis;
             }
 
             Varyings vert(Attributes IN)
@@ -102,9 +92,7 @@ Shader "Custom/StainedOceanLightWaters"
                 uint index = IN.vertexID;
 
                 float3 vertexPos = vertices[index];
-
-                uint triIndex = index / 3;
-                float3 displacement = GetDisplacement(triIndex);
+                float3 displacement = GetDisplacement(index);
 
                 // Get the world rotation.
                 float3 right = vertexPos.x * xAxis;
@@ -113,7 +101,7 @@ Shader "Custom/StainedOceanLightWaters"
                 
                 OUT.pos = TransformObjectToHClip(right + up + forward + world + displacement);
 
-                uint colorIndex = colors[IN.vertexID / 3];
+                uint colorIndex = lightWatersColors[IN.vertexID / 3];
 
                 OUT.uv = uvs[index];
                 OUT.color = GetColor(colorIndex);
@@ -136,7 +124,9 @@ Shader "Custom/StainedOceanLightWaters"
                     float value = step(.9, luminance);
 
                     if(value == 1.0) {
-                        return minBary < EdgeThreshold ? EdgeColor : IN.color;// - float4(0.15,0.15,0.15,0);
+                        float4 baryColor = minBary < EdgeThreshold ? float4(EdgeColor.rgb, IN.color.a) : IN.color;// - float4(0.15,0.15,0.15,0);
+                        baryColor.a = IN.color.a;
+                        return baryColor;
                     } else {
                         return IN.color;
                     }

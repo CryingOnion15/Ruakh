@@ -11,6 +11,7 @@ public class StainedOceanController : MonoBehaviour
     [Header("Shader")]
     //public ComputeShader compShader;
     public Material material;
+    public bool useColorAdjacency = false;
 
     [Header("Screen Space Data")]
     public Camera cameraRef;
@@ -37,7 +38,6 @@ public class StainedOceanController : MonoBehaviour
     // Update is called once per frame
     void OnRenderObject()
     {
-        material.SetBuffer("colors", colorBuffer);
         // TODO update the vertices buffer to allign the to the local node position.
         material.SetBuffer("vertices", vertexBuffer);
 
@@ -73,7 +73,6 @@ public class StainedOceanController : MonoBehaviour
 
         // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
         vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
-        colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
         uvBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 2);
         baryCoordsBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
 
@@ -104,18 +103,22 @@ public class StainedOceanController : MonoBehaviour
         vertexBuffer.SetData(vertexLocations);
         uvBuffer.SetData(uvLocations);
 
-        int[] colors = new int[triangleCount];
-        for (int i = 0; i < triangleCount; i++)
+        if (useColorAdjacency)
         {
-            colors[i] = -1;
+            colorBuffer = new ComputeBuffer(triangleCount, sizeof(int));
+            int[] colors = new int[triangleCount];
+            for (int i = 0; i < triangleCount; i++)
+            {
+                colors[i] = -1;
+            }
+
+            CreateAdjacencyList();
+            SetColorAdjacency(colors);
+
+            colorBuffer.SetData(colors);
+            material.SetBuffer("colors", colorBuffer);
         }
 
-        CreateAdjacencyList();
-        SetColorAdjacency(colors);
-
-        colorBuffer.SetData(colors);
-
-        material.SetBuffer("colors", colorBuffer);
         material.SetBuffer("vertices", vertexBuffer);
         material.SetBuffer("baryCoords", baryCoordsBuffer);
         material.SetBuffer("uvs", uvBuffer);

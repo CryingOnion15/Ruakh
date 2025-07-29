@@ -31,7 +31,7 @@
                 float3 velocity;
                 float theta;
                 float alpha;
-                int captured;
+                int state;
             };
 
             // Buffer
@@ -106,7 +106,11 @@
                 OUT.pos = TransformObjectToHClip(float4(offsetWS, 1.0));
                 OUT.uv = quadUVs[vertexInQuad];
 
-                _Color.a = p.alpha;
+                if(p.state != 3) {
+                    _Color.a = p.alpha;
+                } else {
+                    _Color.a = 0;
+                }
                 OUT.color = _Color;
 
                 return OUT;

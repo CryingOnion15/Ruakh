@@ -11,12 +11,18 @@ struct LightParticle
     float3 velocity;
     float theta;
     float alpha;
-    int captured;
+    uint state; // 0 = drift, 1 = captured, 2 = midpoint, 3 = dead/invisable
+};
+
+struct ParticleMidpoint {
+    float3 midpoint;
+    uint triIndex;
 };
 
 // Read Write Structured buffer that will store individual particle data.
 RWStructuredBuffer<LightParticle> particleBuffer;
-RWStructuredBuffer<float3> midpointsBuffer;
+RWStructuredBuffer<ParticleMidpoint> midpointsBuffer;
+RWStructuredBuffer<uint> lightWatersColors;
 
 // Particle movement variables
 float deltaTime;
@@ -29,10 +35,10 @@ float followSpeed;
 float captureRadius;
 
 // Spawning Variables
-int particleCount;
-int spawnBurstAmount;
-int groupIndex;
-int randomSeed;
+uint particleCount;
+uint spawnBurstAmount;
+uint groupIndex;
+uint randomSeed;
 
 // Vectors
 float3 playerLoc;
@@ -41,6 +47,7 @@ float3 rightVector;
 
 // Control
 bool captureEnabled;
+uint particlesToMidpoint;
 
 // Constants
 static const float PI = 3.14159265358979323846;
@@ -85,12 +92,22 @@ void MoveObital(inout LightParticle particle) {
 }
 
 void MoveToMidpoint(uint index, inout LightParticle particle) {
-    float3 midpoint = midpointsBuffer[index];
-    float3 direction = midpoint - particle.position;
+    ParticleMidpoint current = midpointsBuffer[index];
+    float3 midpoint = current.midpoint;
+    float3 direction = normalize(midpoint - particle.position);
 
     particle.velocity = direction;
-    particle.position += followSpeed * particle.velocity * deltaTime;
+    particle.position += 300 * particle.velocity * deltaTime;
     
+    float3 midpointVec = midpoint - particle.position;
+
+    if(dot(midpointVec, midpointVec) <= .2) {
+        particle.state = 3;
+        
+        uint currentColor = lightWatersColors[current.triIndex];
+        lightWatersColors[current.triIndex] = currentColor + 1;
+    }
+
 }
 
 void MoveDrift(inout LightParticle particle) {
@@ -176,24 +193,33 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
         if(particle.alpha < 1 && particle.alpha != 0) {
             particle.alpha += deltaTime / 4;
         } else {
-            if(captureEnabled) {
-                MoveToMidpoint(id.x, particle);
-                // float circX = pow(particle.position.x - playerLoc.x, 2);
-                // float circY = pow(particle.position.y - playerLoc.y, 2);
-                // float circZ = pow(particle.position.z - playerLoc.z, 2);
-                // bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
+            switch(particle.state) {
+                case 0:
+                    float circX = pow(particle.position.x - playerLoc.x, 2);
+                    float circY = pow(particle.position.y - playerLoc.y, 2);
+                    float circZ = pow(particle.position.z - playerLoc.z, 2);
+                    bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
 
-                // if(isInside) {
-                //     particle.captured = 1;
-                //     MoveObital(particle);
-                // } else {
-                //     particle.captured = 0;
-                //     MoveDrift(particle);
-                // }
-            }
-            else {
-                particle.captured = 0;
-                MoveDrift(particle);
+                    if(isInside && captureEnabled) {
+                        // Update the buffer to show the particle is state.
+                        particle.state = 1;
+                        MoveObital(particle);
+                    } else {
+                        particle.state = 0;
+                        MoveDrift(particle);
+                    }
+                    break;
+                case 1:
+                    if(id.x < particlesToMidpoint) {
+                        particle.state = 2;
+                        MoveToMidpoint(id.x, particle);
+                    } else {
+                        MoveObital(particle);
+                    }
+                    break;
+                case 2:
+                    MoveToMidpoint(id.x, particle);
+                    break;
             }
         }
     }
@@ -204,8 +230,8 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
 [numthreads(256,1,1)]
 void SpawnParticleSet (uint3 id : SV_DispatchThreadID)
 {
-    int lower = groupIndex * spawnBurstAmount;
-    int upper = (groupIndex + 1) * spawnBurstAmount;
+    uint lower = groupIndex * spawnBurstAmount;
+    uint upper = (groupIndex + 1) * spawnBurstAmount;
 
     // Prevents out of index.
     if(upper > particleCount) {

@@ -4,16 +4,33 @@ using UnityEngine;
 [ExecuteInEditMode]
 public class ParticleMidpointCalculator : MonoBehaviour
 {
+    public struct ParticleMidpoint
+    {
+        Vector3 midpoint;
+        int triangleIndex;
+
+        public ParticleMidpoint(Vector3 loc, int index)
+        {
+            midpoint = loc;
+            triangleIndex = index;
+        }
+    }
+
     public Mesh mesh;
     public ComputeShader compShader;
+    public Material lightWatersShader;
     public Camera cameraRef;
     public int midpointsToCreate = 500;
+
+    [Header("DEBUG")]
+    public bool enableGizmo = false;
 
     protected ComputeBuffer midpointBuffer;
 
     protected List<Vector2> meshUvs = new List<Vector2>();
     protected List<Vector2> validMidpoints = new List<Vector2>();
-    protected Vector3[] midpoints;
+    protected List<int> validTriangleIndices = new List<int>();
+    protected ParticleMidpoint[] midpoints;
     protected int[] meshTriIndices;
     protected float cameraDistance;
     protected float frustrumHeight;
@@ -39,14 +56,36 @@ public class ParticleMidpointCalculator : MonoBehaviour
         inverseView = Matrix4x4.Inverse(cameraRef.worldToCameraMatrix);
         inverseProjetion = Matrix4x4.Inverse(cameraRef.projectionMatrix);
 
-        Debug.Log("Height: " + frustrumHeight);
-        Debug.Log("Width: " + frustrumWidth);
-
         meshTriIndices = mesh.triangles;
         mesh.GetUVs(0, meshUvs);
 
         int triangleCount = meshTriIndices.Length / 3;
 
+        // Create buffers for midpoints and light water colors.
+        CreateMidpointBuffer(triangleCount);
+        CreateTriangleColorBuffer(triangleCount);
+
+        ShuffleMidpoints(midpoints);
+        //DEBUGPrintMidpoints(midpoints);
+
+        ComputeBufferMap.AssignBufferData("midpointsBuffer", midpoints);
+        ComputeBufferMap.AssignBufferToComputerShader("midpointsBuffer", compShader, 0);
+    }
+
+    void ShuffleMidpoints(ParticleMidpoint[] midpoints)
+    {
+        for (int i = 0; i < midpoints.Length - 1; i++)
+        {
+            int index = Random.Range(0, i + 1);
+            ParticleMidpoint value = midpoints[index];
+            midpoints[index] = midpoints[i];
+            midpoints[i] = value;
+        }
+    }
+
+    void CreateMidpointBuffer(int triangleCount)
+    {
+        // Find all valid midpoints and create the midpoint buffer.
         for (int i = 0; i < triangleCount; i++)
         {
             int triStart = i * 3;
@@ -59,51 +98,53 @@ public class ParticleMidpointCalculator : MonoBehaviour
                 float midX = (uv1.x + uv2.x + uv3.x) / 3;
                 float midY = (uv1.y + uv2.y + uv3.y) / 3;
                 validMidpoints.Add(new Vector2(midX, midY));
+                validTriangleIndices.Add(i);
             }
-
-            //midpoints[i] = new Vector2(midX, midY);
         }
 
         int midpointsLength = (int)Mathf.Max(midpointsToCreate, validMidpoints.Count);
-        midpoints = new Vector3[midpointsLength];
-
-        // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
-        midpointBuffer = ComputeBufferMap.CreateBuffer(
-            "midpointsBuffer",
-            midpointsLength,
-            sizeof(float) * 3,
-            gameObject
-        );
+        midpoints = new ParticleMidpoint[midpointsLength];
 
         for (int i = 0; i < midpointsLength; i++)
         {
             if (i < validMidpoints.Count)
             {
-                midpoints[i] = GetFrustrumLocation(validMidpoints[i]);
+                midpoints[i] = new ParticleMidpoint(
+                    GetFrustrumLocation(validMidpoints[i]),
+                    validTriangleIndices[i]
+                );
             }
             else
             {
                 int randomIndex = Mathf.FloorToInt(Random.value * (validMidpoints.Count - 1));
-                midpoints[i] = GetFrustrumLocation(validMidpoints[randomIndex]);
+                midpoints[i] = new ParticleMidpoint(
+                    GetFrustrumLocation(validMidpoints[randomIndex]),
+                    validTriangleIndices[randomIndex]
+                );
             }
         }
 
-        ShuffleMidpoints(midpoints);
-        //DEBUGPrintMidpoints(midpoints);
-
-        ComputeBufferMap.AssignBufferData("midpointsBuffer", midpoints);
-        ComputeBufferMap.AssignBufferToComputerShader("midpointsBuffer", compShader, 0);
+        // Create the Vertex Buffer, Triangle Buffer, and Color Buffers.
+        midpointBuffer = ComputeBufferMap.CreateBuffer(
+            "midpointsBuffer",
+            midpointsLength,
+            sizeof(float) * 3 + sizeof(int),
+            gameObject
+        );
     }
 
-    void ShuffleMidpoints(Vector3[] midpoints)
+    void CreateTriangleColorBuffer(int triangleCount)
     {
-        for (int i = 0; i < midpoints.Length - 1; i++)
+        int[] colors = new int[triangleCount];
+        for (int i = 0; i < triangleCount; i++)
         {
-            int index = Random.Range(0, i + 1);
-            Vector2 value = midpoints[index];
-            midpoints[index] = midpoints[i];
-            midpoints[i] = value;
+            colors[i] = 0;
         }
+
+        ComputeBufferMap.CreateBuffer("lightWatersColors", triangleCount, sizeof(int), gameObject);
+        ComputeBufferMap.AssignBufferData("lightWatersColors", colors);
+        ComputeBufferMap.AssignBufferToComputerShader("lightWatersColors", compShader, 0);
+        ComputeBufferMap.AssignBufferToMaterial("lightWatersColors", lightWatersShader);
     }
 
     Vector3 GetFrustrumLocation(Vector2 uv)
@@ -124,27 +165,37 @@ public class ParticleMidpointCalculator : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.red;
-        if (validMidpoints.Count == 0)
+        if (enableGizmo)
         {
-            Vector3 worldPos = new Vector3(0, 0, -20);
-            Gizmos.DrawSphere(worldPos, 20f);
-            return;
-        }
-        else
-        {
-            foreach (var uv in validMidpoints)
+            if (validMidpoints.Count == 0)
             {
-                Vector3 worldPos = GetFrustrumLocation(uv);
-                Gizmos.DrawSphere(worldPos, 5f);
+                Gizmos.color = Color.orange;
+                Vector3 worldPos = new Vector3(0, 0, -20);
+                Gizmos.DrawSphere(worldPos, 20f);
+                return;
             }
-        }
+            else
+            {
+                Gizmos.color = Color.red;
+                foreach (var uv in validMidpoints)
+                {
+                    Vector3 worldPos = GetFrustrumLocation(uv);
+                    Gizmos.DrawSphere(worldPos, 5f);
+                }
+            }
 
-        Gizmos.color = Color.green;
+            Gizmos.color = Color.green;
+        }
+    }
+
+    void OnDisable()
+    {
+        OnDestroy();
     }
 
     void OnDestroy()
     {
-        ComputeBufferMap.RemoveBufferDependency("midpoints", gameObject);
+        ComputeBufferMap.RemoveBufferDependency("midpointsBuffer", gameObject);
+        ComputeBufferMap.RemoveBufferDependency("lightWatersColors", gameObject);
     }
 }
