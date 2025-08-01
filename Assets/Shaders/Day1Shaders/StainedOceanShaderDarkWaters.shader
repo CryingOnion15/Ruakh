@@ -7,6 +7,7 @@ Shader "Custom/StainedOceanDarkWaters"
         color4 ("Color 4", Color) = (1,1,1,1)
         EdgeColor ("EdgeColor", Color) = (1,1,1,1)
         WaveTexture("Wave Texture", 2D) = "white" {}
+        WaveNormal("Wave Normal", 2D) = "white" {}
         EdgeThreshold ("Edge Threshold", float) = 0.1
         Displacement("Displacement", float) = 3.0
     }
@@ -44,6 +45,9 @@ Shader "Custom/StainedOceanDarkWaters"
             Texture2D WaveTexture;
             SamplerState sampler_WaveTexture;
 
+            Texture2D WaveNormal;
+            SamplerState sampler_WaveNormal;
+
             float EdgeThreshold;
 
             // Axis & Positioning
@@ -56,6 +60,8 @@ Shader "Custom/StainedOceanDarkWaters"
             struct Attributes
             {
                 uint vertexID : SV_VertexID;
+                float3 normal : NORMAL;
+                float4 tangent : TANGENT;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -66,6 +72,9 @@ Shader "Custom/StainedOceanDarkWaters"
                 float2 uv : TEXCOORD0;
                 float3 bary : TEXCOORD1;
 
+                float3 tangentWS : TEXCOORD2;
+                float3 bitangentWS : TEXCOORD3;
+                float3 normalWS : TEXCOORD4;
             };
             
             float4 GetColor(uint index) {
@@ -94,19 +103,25 @@ Shader "Custom/StainedOceanDarkWaters"
                 float3 vertexPos = vertices[index];
                 float3 displacement = GetDisplacement(index);
 
+                // Normalize world-space directions
+                float3 normalWS = normalize(mul((float3x3)unity_ObjectToWorld, IN.normal));
+                float3 tangentWS = normalize(mul((float3x3)unity_ObjectToWorld, IN.tangent.xyz));
+                float3 bitangentWS = cross(normalWS, tangentWS) * IN.tangent.w;
+
                 // Get the world rotation.
                 float3 right = vertexPos.x * xAxis;
                 float3 up = vertexPos.y * yAxis;
                 float3 forward = vertexPos.z * zAxis;
                 
-                OUT.pos = TransformObjectToHClip(right + up + forward + world + displacement);
-
                 uint colorIndex = colors[IN.vertexID / 3];
 
+                OUT.pos = TransformObjectToHClip(right + up + forward + world + displacement);
                 OUT.uv = uvs[index];
                 OUT.color = GetColor(colorIndex);
-
                 OUT.bary = baryCoords[index];
+                OUT.tangentWS = tangentWS;
+                OUT.bitangentWS = bitangentWS;
+                OUT.normalWS = normalWS;
 
                 return OUT;
             }
@@ -120,12 +135,22 @@ Shader "Custom/StainedOceanDarkWaters"
                 float4 texColor = WaveTexture.SampleLevel(sampler_WaveTexture, clampedUV , 0);
                 float luminance = dot(texColor.rgb, float3(0.2126, 0.7152, 0.0722));
                 float value = step(.9, luminance);
+                float4 finalColor;
 
                 if(value == 1.0) {
-                    return minBary < EdgeThreshold ? EdgeColor : IN.color;// + float4(0.05,0.05,0.05,0);
+                    finalColor = minBary < EdgeThreshold ? EdgeColor : IN.color;// + float4(0.05,0.05,0.05,0);
                 } else {
-                    return IN.color;
+                    finalColor = IN.color;
                 }
+
+                // Get Normal Light Color
+                float3x3 TBN = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
+                float3 tangentNormal = WaveNormal.Sample(sampler_WaveNormal, IN.uv).xyz * 2.0 - 1.0;
+                float3 worldNormal = normalize(mul(tangentNormal, TBN));
+                float3 lightDir = normalize(float3(0.3, 0.7, 0.5));
+                float lighting = saturate(dot(worldNormal, lightDir));
+                
+                return float4(finalColor.rgb * lighting, finalColor.a);
             }
 
             ENDHLSL
