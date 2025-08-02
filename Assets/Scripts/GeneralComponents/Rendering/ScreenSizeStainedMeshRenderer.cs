@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework.Constraints;
 using UnityEditor.Rendering.Universal;
 using UnityEngine;
+using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.Rendering;
 
 [ExecuteAlways]
@@ -15,6 +16,7 @@ public class StainedOceanController : MonoBehaviour
     //public ComputeShader compShader;
     public Material material;
     public bool useColorAdjacency = false;
+    public Transform directionalLight;
 
     [Header("Screen Space Data")]
     public Camera cameraRef;
@@ -50,6 +52,7 @@ public class StainedOceanController : MonoBehaviour
         material.SetVector("yAxis", transform.up);
         material.SetVector("zAxis", transform.forward);
         material.SetVector("world", transform.position);
+        material.SetVector("lightDirection", directionalLight.forward);
 
         material.SetPass(0);
         Graphics.DrawProcedural(
@@ -62,6 +65,9 @@ public class StainedOceanController : MonoBehaviour
 
     void OnEnable()
     {
+        oceanMesh.RecalculateNormals();
+        oceanMesh.RecalculateTangents();
+
         Vector3 direction = transform.position - cameraRef.transform.position;
         cameraDistance = Vector3.Dot(cameraRef.transform.forward, direction);
         frustrumHeight =
@@ -157,6 +163,9 @@ public class StainedOceanController : MonoBehaviour
 
         normalsBuffer.SetData(expandedNormals);
         tangentsBuffer.SetData(expandedTangents);
+
+        foreach (var t in mesh.tangents)
+            Debug.Log($"Tangent: {t}, Handedness: {t.w}");
 
         material.SetBuffer("normals", normalsBuffer);
         material.SetBuffer("tangents", tangentsBuffer);

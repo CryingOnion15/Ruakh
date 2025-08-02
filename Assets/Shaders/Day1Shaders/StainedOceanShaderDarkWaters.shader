@@ -10,6 +10,7 @@ Shader "Custom/StainedOceanDarkWaters"
         WaveNormal("Wave Normal", 2D) = "white" {}
         EdgeThreshold ("Edge Threshold", float) = 0.1
         Displacement("Displacement", float) = 3.0
+        NormalStrength("Normal Strength", Range(0.1, 20.0)) = 1.0
     }
     SubShader
     {
@@ -57,13 +58,15 @@ Shader "Custom/StainedOceanDarkWaters"
             float3 yAxis;
             float3 zAxis;
             float3 world;
+            float3 lightDirection;
             float Displacement;
+
+            // Normal Map
+            float NormalStrength;
 
             struct Attributes
             {
                 uint vertexID : SV_VertexID;
-                // float3 normal : NORMAL;
-                // float4 tangent : TANGENT;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -111,7 +114,7 @@ Shader "Custom/StainedOceanDarkWaters"
                 // Normalize world-space directions
                 float3 normalWS = normalize(mul((float3x3)unity_ObjectToWorld, norm));
                 float3 tangentWS = normalize(mul((float3x3)unity_ObjectToWorld, tan.xyz));
-                float3 bitangentWS = cross(normalWS, tangentWS) * tan.w;
+                float3 bitangentWS = normalize(cross(normalWS, tangentWS) * tan.w);
 
                 // Get the world rotation.
                 float3 right = vertexPos.x * xAxis;
@@ -150,15 +153,15 @@ Shader "Custom/StainedOceanDarkWaters"
 
                 // Get Normal Light Color
                 float3x3 TBN = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
-                float3 tangentNormal = WaveNormal.Sample(sampler_WaveNormal, IN.uv).xyz * 2.0 - 1.0;
+                float3 tangentNormal = UnpackNormal(WaveNormal.Sample(sampler_WaveNormal, IN.uv));
+                tangentNormal.xy *= NormalStrength;
+                tangentNormal = normalize(tangentNormal);
                 float3 worldNormal = normalize(mul(tangentNormal, TBN));
 
-                float3 lightDir = normalize(float3(0, .5, 1));
-                float lighting = saturate(dot(worldNormal, lightDir));
-                
+                float lighting = saturate(dot(worldNormal, lightDirection));
                 return float4(finalColor.rgb * lighting, finalColor.a);
             }
-
+            
             ENDHLSL
         }
     }
