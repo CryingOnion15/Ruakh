@@ -19555,6 +19555,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 263ed7afcc068304aaeac6a5cff767cd, type: 3}
+  passNormalsAndTangents: 1
   material: {fileID: 2100000, guid: 5daf74282de54c04a94de2b6b960be0a, type: 2}
   useColorAdjacency: 1
   cameraRef: {fileID: 61844037}
@@ -51175,7 +51176,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1481032544
 Transform:
   m_ObjectHideFlags: 0
@@ -51204,6 +51205,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 263ed7afcc068304aaeac6a5cff767cd, type: 3}
+  passNormalsAndTangents: 0
   material: {fileID: 2100000, guid: bbfab5c16084a4d4dbe4b56d4b43f3f7, type: 2}
   useColorAdjacency: 0
   cameraRef: {fileID: 61844037}

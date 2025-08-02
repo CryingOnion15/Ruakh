@@ -1,12 +1,15 @@
 using System.Collections.Generic;
 using NUnit.Framework.Constraints;
+using UnityEditor.Rendering.Universal;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [ExecuteAlways]
 public class StainedOceanController : MonoBehaviour
 {
     [Header("Mesh")]
     public Mesh oceanMesh;
+    public bool passNormalsAndTangents = false;
 
     [Header("Shader")]
     //public ComputeShader compShader;
@@ -22,6 +25,8 @@ public class StainedOceanController : MonoBehaviour
     protected ComputeBuffer colorBuffer;
     protected ComputeBuffer uvBuffer;
     protected ComputeBuffer baryCoordsBuffer;
+    protected ComputeBuffer normalsBuffer;
+    protected ComputeBuffer tangentsBuffer;
 
     protected Dictionary<(Vector3, Vector3), List<int>> edgeMap;
     protected List<int>[] adjacencyList;
@@ -119,9 +124,42 @@ public class StainedOceanController : MonoBehaviour
             material.SetBuffer("colors", colorBuffer);
         }
 
+        if (passNormalsAndTangents)
+        {
+            CreateNormalsAndTangentsBuffer(oceanMesh);
+        }
+
         material.SetBuffer("vertices", vertexBuffer);
         material.SetBuffer("baryCoords", baryCoordsBuffer);
         material.SetBuffer("uvs", uvBuffer);
+    }
+
+    void CreateNormalsAndTangentsBuffer(Mesh mesh)
+    {
+        int triVertexCount = mesh.triangles.Length;
+
+        Vector3[] expandedNormals = new Vector3[triVertexCount];
+        Vector4[] expandedTangents = new Vector4[triVertexCount];
+
+        int[] tris = mesh.triangles;
+        Vector3[] meshNormals = mesh.normals;
+        Vector4[] meshTangents = mesh.tangents;
+
+        for (int i = 0; i < triVertexCount; i++)
+        {
+            int vertIndex = tris[i];
+            expandedNormals[i] = meshNormals[vertIndex];
+            expandedTangents[i] = meshTangents[vertIndex];
+        }
+
+        normalsBuffer = new ComputeBuffer(triVertexCount, sizeof(float) * 3);
+        tangentsBuffer = new ComputeBuffer(triVertexCount, sizeof(float) * 4);
+
+        normalsBuffer.SetData(expandedNormals);
+        tangentsBuffer.SetData(expandedTangents);
+
+        material.SetBuffer("normals", normalsBuffer);
+        material.SetBuffer("tangents", tangentsBuffer);
     }
 
     Vector3[] GetVerticesToScreenSize(Vector2[] uvs)
@@ -146,6 +184,8 @@ public class StainedOceanController : MonoBehaviour
         vertexBuffer?.Release();
         uvBuffer?.Release();
         baryCoordsBuffer?.Release();
+        normalsBuffer?.Release();
+        tangentsBuffer?.Release();
     }
 
     void CreateAdjacencyList()

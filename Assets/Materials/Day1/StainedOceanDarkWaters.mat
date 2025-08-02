@@ -23,6 +23,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - WaveNormal:
+        m_Texture: {fileID: 2800000, guid: 068be7fc60bc06347810ee2123dbc782, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - WaveTexture:
         m_Texture: {fileID: 8400000, guid: 404b92be8ddb2954aab412ac1c6ed00a, type: 2}
         m_Scale: {x: 1, y: 1}

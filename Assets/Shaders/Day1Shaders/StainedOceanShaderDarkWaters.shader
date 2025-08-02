@@ -30,6 +30,8 @@ Shader "Custom/StainedOceanDarkWaters"
 
             // Buffer
             StructuredBuffer<float3> vertices;
+            StructuredBuffer<float3> normals;
+            StructuredBuffer<float4> tangents;
             StructuredBuffer<float3> baryCoords;
             StructuredBuffer<float2> uvs;
             StructuredBuffer<uint> colors;
@@ -60,8 +62,8 @@ Shader "Custom/StainedOceanDarkWaters"
             struct Attributes
             {
                 uint vertexID : SV_VertexID;
-                float3 normal : NORMAL;
-                float4 tangent : TANGENT;
+                // float3 normal : NORMAL;
+                // float4 tangent : TANGENT;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -99,21 +101,24 @@ Shader "Custom/StainedOceanDarkWaters"
                 Varyings OUT;
 
                 uint index = IN.vertexID;
+                uint triIndex = IN.vertexID / 3;
 
                 float3 vertexPos = vertices[index];
+                float3 norm = normals[index];
+                float4 tan = tangents[index];
                 float3 displacement = GetDisplacement(index);
 
                 // Normalize world-space directions
-                float3 normalWS = normalize(mul((float3x3)unity_ObjectToWorld, IN.normal));
-                float3 tangentWS = normalize(mul((float3x3)unity_ObjectToWorld, IN.tangent.xyz));
-                float3 bitangentWS = cross(normalWS, tangentWS) * IN.tangent.w;
+                float3 normalWS = normalize(mul((float3x3)unity_ObjectToWorld, norm));
+                float3 tangentWS = normalize(mul((float3x3)unity_ObjectToWorld, tan.xyz));
+                float3 bitangentWS = cross(normalWS, tangentWS) * tan.w;
 
                 // Get the world rotation.
                 float3 right = vertexPos.x * xAxis;
                 float3 up = vertexPos.y * yAxis;
                 float3 forward = vertexPos.z * zAxis;
                 
-                uint colorIndex = colors[IN.vertexID / 3];
+                uint colorIndex = colors[triIndex];
 
                 OUT.pos = TransformObjectToHClip(right + up + forward + world + displacement);
                 OUT.uv = uvs[index];
@@ -147,7 +152,8 @@ Shader "Custom/StainedOceanDarkWaters"
                 float3x3 TBN = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
                 float3 tangentNormal = WaveNormal.Sample(sampler_WaveNormal, IN.uv).xyz * 2.0 - 1.0;
                 float3 worldNormal = normalize(mul(tangentNormal, TBN));
-                float3 lightDir = normalize(float3(0.3, 0.7, 0.5));
+
+                float3 lightDir = normalize(float3(0, .5, 1));
                 float lighting = saturate(dot(worldNormal, lightDir));
                 
                 return float4(finalColor.rgb * lighting, finalColor.a);
