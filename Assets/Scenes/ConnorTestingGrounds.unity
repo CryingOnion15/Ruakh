@@ -260,13 +260,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 732852295}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 3, z: -570}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &732852298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -521,8 +521,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oceanMesh: {fileID: -8900819022981944687, guid: 263ed7afcc068304aaeac6a5cff767cd, type: 3}
+  passNormalsAndTangents: 0
   material: {fileID: 2100000, guid: bbfab5c16084a4d4dbe4b56d4b43f3f7, type: 2}
   useColorAdjacency: 0
+  directionalLight: {fileID: 732852297}
   cameraRef: {fileID: 987173583}
 --- !u!4 &1143613613
 Transform:
@@ -5851,15 +5853,15 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1561677474}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -55.2}
+  m_LocalScale: {x: 50, y: 50, z: 50}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2051867257}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -203, y: 307}
   m_SizeDelta: {x: 580, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1561677476
@@ -5884,22 +5886,22 @@ MonoBehaviour:
       m_Calls: []
   m_text: IN THE BEGINNING
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: ec71e89da28be444bb4d22d22d351cb8, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 54bf1477333901945b82974ce3789336, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 54bf1477333901945b82974ce3789336, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4282642403
-  m_fontColor: {r: 0.8906148, g: 0.93710685, b: 0.26227197, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 1
-  m_colorMode: 1
+  m_colorMode: 0
   m_fontColorGradient:
-    topLeft: {r: 0.94700134, g: 1, b: 0, a: 1}
-    topRight: {r: 1, g: 0.57391274, b: 0, a: 1}
-    bottomLeft: {r: 0.94700134, g: 1, b: 0, a: 1}
-    bottomRight: {r: 1, g: 0.57391274, b: 0, a: 1}
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
   m_fontColorGradientPreset: {fileID: 0}
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
@@ -5909,13 +5911,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 800
-  m_fontSizeBase: 800
+  m_fontSize: 30
+  m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 17
+  m_fontStyle: 16
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -5979,7 +5981,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ec71e89da28be444bb4d22d22d351cb8, type: 2}
+  - {fileID: 2180264, guid: 54bf1477333901945b82974ce3789336, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -6094,9 +6096,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b974ad05373174a82c2c33fee60171, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  oceanMesh: {fileID: -8900819022981944687, guid: 263ed7afcc068304aaeac6a5cff767cd, type: 3}
+  oceanMesh: {fileID: -8900819022981944687, guid: cbddce39a54cabc48ac84b4d04237520, type: 3}
+  passNormalsAndTangents: 1
   material: {fileID: 2100000, guid: 5daf74282de54c04a94de2b6b960be0a, type: 2}
   useColorAdjacency: 1
+  directionalLight: {fileID: 732852297}
   cameraRef: {fileID: 987173583}
 --- !u!4 &1960990976
 Transform:

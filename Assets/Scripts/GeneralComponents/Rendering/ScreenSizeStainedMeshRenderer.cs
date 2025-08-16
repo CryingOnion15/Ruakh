@@ -164,9 +164,6 @@ public class StainedOceanController : MonoBehaviour
         normalsBuffer.SetData(expandedNormals);
         tangentsBuffer.SetData(expandedTangents);
 
-        foreach (var t in mesh.tangents)
-            Debug.Log($"Tangent: {t}, Handedness: {t.w}");
-
         material.SetBuffer("normals", normalsBuffer);
         material.SetBuffer("tangents", tangentsBuffer);
     }
