@@ -22,7 +22,8 @@ Shader "Custom/StainedFontShaderDisolve"
         _Dissolve("Dissolve", Range(0,1)) = 0
         _NoiseTex("Noise Texture", 2D) = "white" {}
         _NoiseScale("Noise Scale", Float) = 5
-        _NoiseOffset("Noise Scroll", Vector) = (0, 0.1, 0, 0)
+        _NoiseOffset("Noise Offset", Vector) = (0, 0.1, 0, 0)
+        _NoiseScroll("Noise Scroll", Vector) = (0, 0, 0, 0)
         _EdgeWidth("Edge Width", Range(.01,0.2)) = 0.05
         _GlowColor("Glow Color", Color) = (1,0.5,0,1)
         _GlowIntensity("Glow Intensity", Float) = 2
@@ -82,6 +83,7 @@ Shader "Custom/StainedFontShaderDisolve"
             SAMPLER(sampler_NoiseTex);
             float _NoiseScale;
             float4 _NoiseOffset;
+            float4 _NoiseScroll;
             float _EdgeWidth;
             float4 _GlowColor;
             float _GlowIntensity;
@@ -132,7 +134,7 @@ Shader "Custom/StainedFontShaderDisolve"
                 if(_UseDissolve != 0) {
                     float2 screenUV = IN.positionHCS.xy / IN.positionHCS.w;
                     screenUV = screenUV * .5 + 0.5;
-                    float2 noiseUV = screenUV * _NoiseScale + (_NoiseOffset.xy);
+                    float2 noiseUV = screenUV * _NoiseScale + (_NoiseOffset.xy) + (_Time.y * _NoiseScroll.xy);
                     float noiseVal = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, noiseUV).r;
 
                     // mask: dissolve threshold
