@@ -10,7 +10,7 @@
     {
         Tags { "RenderType" = "Transparent" "Queue"="Transparent" "RenderPipeline" = "UniversalPipeline" }
 
-        Blend SrcAlpha OneMinusSrcAlpha
+        Blend SrcAlpha One
         ZWrite Off
 
         Pass
@@ -28,9 +28,9 @@
                 float3 rotationMatRow2;
                 float3 rotationMatRow3;
                 float3 position;
+                float3 startPosition;
                 float3 velocity;
                 float theta;
-                float alpha;
                 int state;
             };
 
@@ -106,10 +106,10 @@
                 OUT.pos = TransformObjectToHClip(float4(offsetWS, 1.0));
                 OUT.uv = quadUVs[vertexInQuad];
 
-                if(p.state != 3) {
-                    _Color.a = p.alpha;
-                } else {
+                if(p.state == 0 || p.state == 5) {
                     _Color.a = 0;
+                } else {
+                    _Color.a = 255;
                 }
                 OUT.color = _Color;
 

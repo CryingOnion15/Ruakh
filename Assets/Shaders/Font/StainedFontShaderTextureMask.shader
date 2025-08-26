@@ -22,6 +22,8 @@ Shader "Custom/StainedFontShaderTextureMask"
         _MaskScale("Mask Scale", Float) = 1
         _TextureOffset("Texture Offset", Vector) = (0,0,0,0)
         _Rotation("Rotation", Float) = 0
+        _AltColor("Alt Color", Color) = (1,1,1,1)
+        _AltMixColor("Alt Mix Color", Color) = (1,1,1,1)
 
         [Toggle] _UseCircleMask("Use Circle Mask", Float) = 0
         _CircleCenter("Circle Center", Vector) = (.5,.5,0,0)
@@ -73,6 +75,7 @@ Shader "Custom/StainedFontShaderTextureMask"
             TEXTURE2D(_FaceTexture);
             SAMPLER(sampler_FaceTexture);
             float4 _MixColor;
+            float sampleTheta;
 
             // Texture Mask Variables
             float _UseTextureMask;
@@ -83,6 +86,8 @@ Shader "Custom/StainedFontShaderTextureMask"
             float _Rotation;
             float3 _BoundsMin;
             float3 _BoundsMax;
+            float4 _AltColor;
+            float4 _AltMixColor;
 
             // Circle Mash Variables
             float _UseCircleMask;
@@ -105,7 +110,6 @@ Shader "Custom/StainedFontShaderTextureMask"
                 half4 sdfTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
                 half sdf = (sdfTex.a > 0) ? sdfTex.a : sdfTex.r;
                 float2 boundsUV = float2(0,0);
-
                 // Compute main alpha
                 half alpha = smoothstep(0.5 - _Smoothness, 0.5 + _Smoothness, sdf);
 
@@ -114,8 +118,8 @@ Shader "Custom/StainedFontShaderTextureMask"
                 if (_UseFaceTexture != 0)
                 {
                     half4 texCol = SAMPLE_TEXTURE2D(_FaceTexture, sampler_FaceTexture, IN.uv);
-                    float theta = saturate(texCol.r);
-                    faceColor = lerp(_FaceColor, _MixColor, theta) * IN.color;
+                    sampleTheta = saturate(texCol.r);
+                    faceColor = lerp(_FaceColor, _MixColor, sampleTheta) * IN.color;
                 }
                 else
                 {
@@ -158,8 +162,16 @@ Shader "Custom/StainedFontShaderTextureMask"
                     maskUV += float2(.5,.5);
 
                     float maskVal = SAMPLE_TEXTURE2D(_TextureMask, sampler_TextureMask, maskUV).a;
+                    float4 maskColor = _AltColor;
+                    
+                    if (_UseFaceTexture != 0)
+                    {
+                        maskColor = lerp(_AltColor, _AltMixColor, sampleTheta) * IN.color;
+                    }
 
-                    faceColor.a *= maskVal;
+                    maskColor.a = faceColor.a;
+
+                    faceColor = lerp(faceColor, maskColor, maskVal);
                 }
 
                 if(_UseCircleMask != 0) {

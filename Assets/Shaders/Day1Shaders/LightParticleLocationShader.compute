@@ -1,6 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSParticleMove
-#pragma kernel SpawnParticleSet
+#pragma kernel SpawnParticles
 
 struct LightParticle
 {
@@ -8,9 +8,9 @@ struct LightParticle
     float3 rotationMatRow2;
     float3 rotationMatRow3;
     float3 position;
+    float3 startPosition;
     float3 velocity;
     float theta;
-    float alpha;
     uint state; // 0 = drift, 1 = captured, 2 = midpoint, 3 = dead/invisable
 };
 
@@ -34,10 +34,7 @@ float orbitSize;
 float followSpeed;
 float captureRadius;
 
-// Spawning Variables
-uint particleCount;
-uint spawnBurstAmount;
-uint groupIndex;
+// Random Seed
 uint randomSeed;
 
 // Vectors
@@ -82,6 +79,43 @@ float3 RotateLocation(float3 row1, float3 row2, float3 row3, float3 pos) {
     );
 }
 
+void SetRandomParticleVelocity(inout LightParticle particle, uint thread) {
+    float theta = random((randomSeed + thread), 48) * PI * 2;
+    float3 velX = cos(theta) * rightVector;
+    float3 velY = sin(theta) * upVector;
+
+    particle.velocity = velX + velY;
+}
+
+void SetRandomParticleAxis(inout LightParticle particle, uint thread) {
+    float xTheta = random((randomSeed + thread), 19) * 2 * PI;
+    float yTheta = random((randomSeed + thread), 20) * 2 * PI;
+    float zTheta = random((randomSeed + thread), 21) * 2 * PI;
+
+    float cosx = cos(xTheta);
+    float sinx = sin(xTheta);
+    float cosy = cos(yTheta);
+    float siny = sin(yTheta);
+    float cosz = cos(zTheta);
+    float sinz = sin(zTheta);
+
+    particle.rotationMatRow1.x = cosy * cosz;
+    particle.rotationMatRow1.y = cosy * -sinz;
+    particle.rotationMatRow1.z = siny;
+
+    particle.rotationMatRow2.x = cosx * sinz;
+    particle.rotationMatRow2.y = cosx * cosz;
+    particle.rotationMatRow2.z = -sinx * cosy;
+
+    particle.rotationMatRow3.x = cosx * -siny * cosz + sinx * sinz;
+    particle.rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
+    particle.rotationMatRow3.z = cosx * cosy;
+
+    particle.theta = random((randomSeed + thread), 22) * 2 * PI;
+}
+
+
+/****** Movement Functions ******/
 void MoveObital(inout LightParticle particle) {
     float3 equatorPos = GetSphericalCoord(particle.theta, orbitSize);
     float3 rotatedPos = RotateLocation(particle.rotationMatRow1, particle.rotationMatRow2, particle.rotationMatRow3, equatorPos);
@@ -102,7 +136,7 @@ void MoveToMidpoint(uint index, inout LightParticle particle) {
     float3 midpointVec = midpoint - particle.position;
 
     if(dot(midpointVec, midpointVec) <= .2) {
-        particle.state = 3;
+        particle.state = 5;
         
         uint currentColor = lightWatersColors[current.triIndex];
         lightWatersColors[current.triIndex] = currentColor + 1;
@@ -139,49 +173,20 @@ void MoveDrift(inout LightParticle particle) {
     }
 }
 
-void SetRandomParticleLocation(inout LightParticle particle, uint thread) {
-    float x = random((randomSeed + thread), 17) * halfBoundsX * 2 - halfBoundsX;
-    float y = random((randomSeed + thread), 31) * halfBoundsY * 2 - halfBoundsY;
+void MoveToStart(uint index, inout LightParticle particle) {
+    float3 direction = normalize(particle.startPosition - particle.position);
 
-    float3 xLocal = x * rightVector;
-    float3 yLocal = y * upVector;
+    particle.velocity = direction;
+    particle.position += 1000 * particle.velocity * deltaTime;
+    
+    float3 midpointVec = particle.startPosition - particle.position;
 
-    particle.position = xLocal + yLocal;
-}
+    // If the particles is very near the start position.
+    if(dot(midpointVec, midpointVec) <= 10) {
+        SetRandomParticleVelocity(particle, index);
+        particle.state = 2;
+    }
 
-void SetRandomParticleVelocity(inout LightParticle particle, uint thread) {
-    float theta = random((randomSeed + thread), 48) * PI * 2;
-    float3 velX = cos(theta) * rightVector;
-    float3 velY = sin(theta) * upVector;
-
-    particle.velocity = velX + velY;
-}
-
-void SetRandomParticleAxis(inout LightParticle particle, uint thread) {
-    float xTheta = random((randomSeed + thread), 19) * 2 * PI;
-    float yTheta = random((randomSeed + thread), 20) * 2 * PI;
-    float zTheta = random((randomSeed + thread), 21) * 2 * PI;
-
-    float cosx = cos(xTheta);
-    float sinx = sin(xTheta);
-    float cosy = cos(yTheta);
-    float siny = sin(yTheta);
-    float cosz = cos(zTheta);
-    float sinz = sin(zTheta);
-
-    particle.rotationMatRow1.x = cosy * cosz;
-    particle.rotationMatRow1.y = cosy * -sinz;
-    particle.rotationMatRow1.z = siny;
-
-    particle.rotationMatRow2.x = cosx * sinz;
-    particle.rotationMatRow2.y = cosx * cosz;
-    particle.rotationMatRow2.z = -sinx * cosy;
-
-    particle.rotationMatRow3.x = cosx * -siny * cosz + sinx * sinz;
-    particle.rotationMatRow3.y = cosx * -siny * -sinz + sinx * cosz;
-    particle.rotationMatRow3.z = cosx * cosy;
-
-    particle.theta = random((randomSeed + thread), 22) * 2 * PI;
 }
 
 [numthreads(256,1,1)]
@@ -189,64 +194,60 @@ void CSParticleMove (uint3 id : SV_DispatchThreadID)
 {
     LightParticle particle = particleBuffer[id.x];
 
-    if(particle.alpha != 0) {
-        if(particle.alpha < 1 && particle.alpha != 0) {
-            particle.alpha += deltaTime / 4;
-        } else {
-            switch(particle.state) {
-                case 0:
-                    float circX = pow(particle.position.x - playerLoc.x, 2);
-                    float circY = pow(particle.position.y - playerLoc.y, 2);
-                    float circZ = pow(particle.position.z - playerLoc.z, 2);
-                    bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
+    /**
+    0: NONE
+    1: Move to start
+    2: Drift Movement
+    3: Orbital Movement
+    4: Midpoint Movement
+    5: Completed
+    **/
+    switch(particle.state) {
+        // Start Movement.
+        case 1:
+            MoveToStart(id.x, particle);
+            break;
+        // Standard Movement
+        case 2:
+            float circX = pow(particle.position.x - playerLoc.x, 2);
+            float circY = pow(particle.position.y - playerLoc.y, 2);
+            float circZ = pow(particle.position.z - playerLoc.z, 2);
+            bool isInside = circX + circY + circZ <= captureRadius * captureRadius;
 
-                    if(isInside && captureEnabled) {
-                        // Update the buffer to show the particle is state.
-                        particle.state = 1;
-                        MoveObital(particle);
-                    } else {
-                        particle.state = 0;
-                        MoveDrift(particle);
-                    }
-                    break;
-                case 1:
-                    if(id.x < particlesToMidpoint) {
-                        particle.state = 2;
-                        MoveToMidpoint(id.x, particle);
-                    } else {
-                        MoveObital(particle);
-                    }
-                    break;
-                case 2:
-                    MoveToMidpoint(id.x, particle);
-                    break;
+            if(isInside && captureEnabled) {
+                // Update the buffer to show the particle is state.
+                particle.state = 3;
+                MoveObital(particle);
+            } else {
+                particle.state = 2;
+                MoveDrift(particle);
             }
-        }
+            break;
+        // Orbital Movement
+        case 3:
+            if(id.x < particlesToMidpoint) {
+                particle.state = 4;
+                MoveToMidpoint(id.x, particle);
+            } else {
+                MoveObital(particle);
+            }
+            break;
+        // Midpoint Movement
+        case 4:
+            MoveToMidpoint(id.x, particle);
+            break;
     }
-
+        
     particleBuffer[id.x] = particle;
 }
 
+// Intialize all particles and move towards the start position/drift.
 [numthreads(256,1,1)]
-void SpawnParticleSet (uint3 id : SV_DispatchThreadID)
+void SpawnParticles (uint3 id : SV_DispatchThreadID)
 {
-    uint lower = groupIndex * spawnBurstAmount;
-    uint upper = (groupIndex + 1) * spawnBurstAmount;
-
-    // Prevents out of index.
-    if(upper > particleCount) {
-        upper = particleCount;
-    }
-
     LightParticle particle = particleBuffer[id.x];
-
-    if(id.x >= lower && id.x < upper) {
-        SetRandomParticleLocation(particle, id.x);
-        SetRandomParticleVelocity(particle, id.x);
-        SetRandomParticleAxis(particle, id.x);
-
-        particle.alpha = deltaTime / 4;
-    }
+    SetRandomParticleAxis(particle, id.x);
+    particle.state = 1;
 
     particleBuffer[id.x] = particle;
 }

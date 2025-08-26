@@ -1,5 +1,6 @@
-using UnityEngine;
 using TMPro;
+using UnityEditor;
+using UnityEngine;
 
 [RequireComponent(typeof(TMP_Text))]
 [ExecuteAlways]
@@ -9,51 +10,44 @@ public class TextMeshBoundsUpdater : MonoBehaviour
     protected MaterialPropertyBlock mpb;
     protected Renderer textRenderer;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public bool generate = false;
+
+    void OnValidate()
+    {
+        if (generate)
+        {
+            Start();
+
+#if UNITY_EDITOR
+            EditorApplication.delayCall += () =>
+            {
+                if (this != null) // make sure object wasn’t destroyed
+                    generate = false;
+            };
+#endif
+        }
+    }
+
     void Start()
     {
         tmpText = GetComponent<TMP_Text>();
         if (tmpText)
         {
-            TMPro_EventManager.TEXT_CHANGED_EVENT.Add(TextUpdated);
             textRenderer = GetComponent<Renderer>();
             mpb = new MaterialPropertyBlock();
             UpdateBounds();
         }
     }
 
-    protected void OnValidate()
-    {
-        tmpText = GetComponent<TMP_Text>();
-        textRenderer = GetComponent<Renderer>();
-        mpb = mpb ?? new MaterialPropertyBlock();
-
-        if (tmpText && textRenderer)
-        {
-            UpdateBounds();
-        }
-    }
-
-
-    private void OnDestroy()
-    {
-        TMPro_EventManager.TEXT_CHANGED_EVENT.Remove(TextUpdated);
-    }
-
-    protected void TextUpdated(Object obj)
-    {
-        if (obj == tmpText)
-        {
-            UpdateBounds();
-        }
-    }
-
     protected void UpdateBounds()
     {
-        tmpText.ForceMeshUpdate();
-        textRenderer.GetPropertyBlock(mpb);
-        mpb.SetVector("_BoundsMin", tmpText.textBounds.min);
-        mpb.SetVector("_BoundsMax", tmpText.textBounds.max);
-        textRenderer.SetPropertyBlock(mpb);
+        if (tmpText)
+        {
+            tmpText.ForceMeshUpdate();
+            textRenderer.GetPropertyBlock(mpb);
+            mpb.SetVector("_BoundsMin", tmpText.textBounds.min);
+            mpb.SetVector("_BoundsMax", tmpText.textBounds.max);
+            textRenderer.SetPropertyBlock(mpb);
+        }
     }
 }
