@@ -34,6 +34,9 @@ float orbitSize;
 float followSpeed;
 float captureRadius;
 
+// Spawn/Start variables
+float startLerp;
+
 // Random Seed
 uint randomSeed;
 
@@ -127,22 +130,32 @@ void MoveObital(inout LightParticle particle) {
 
 void MoveToMidpoint(uint index, inout LightParticle particle) {
     ParticleMidpoint current = midpointsBuffer[index];
-    float3 midpoint = current.midpoint;
-    float3 direction = normalize(midpoint - particle.position);
+    float3 toMid = current.midpoint - particle.position;
+    float distSq = dot(toMid, toMid);
 
-    particle.velocity = direction;
-    particle.position += 300 * particle.velocity * deltaTime;
-    
-    float3 midpointVec = midpoint - particle.position;
+    // Normalize
+    float invLen = rsqrt(distSq);
+    float3 direction = toMid * invLen;
 
-    if(dot(midpointVec, midpointVec) <= .2) {
+    // Step squared
+    float step = 300 * deltaTime;
+    float stepSq = step * step;
+
+    // If the particle is going to move further than the distance to the midpoint.
+    // Then just move it to the midpoint.
+    if (stepSq >= distSq) {
+        particle.position = current.midpoint;
         particle.state = 5;
-        
         uint currentColor = lightWatersColors[current.triIndex];
         lightWatersColors[current.triIndex] = currentColor + 1;
+        return;
+    } else {
+        particle.position += direction * step;
     }
 
+    particle.velocity = direction;
 }
+
 
 void MoveDrift(inout LightParticle particle) {
     particle.position += driftSpeed * particle.velocity * deltaTime;
@@ -174,19 +187,14 @@ void MoveDrift(inout LightParticle particle) {
 }
 
 void MoveToStart(uint index, inout LightParticle particle) {
-    float3 direction = normalize(particle.startPosition - particle.position);
-
-    particle.velocity = direction;
-    particle.position += 1000 * particle.velocity * deltaTime;
-    
-    float3 midpointVec = particle.startPosition - particle.position;
-
     // If the particles is very near the start position.
-    if(dot(midpointVec, midpointVec) <= 10) {
+    if(startLerp >= 1.0) {
+        particle.position = particle.startPosition;
         SetRandomParticleVelocity(particle, index);
         particle.state = 2;
+    } else {
+        particle.position = lerp(float3(0,0,0), particle.startPosition, startLerp);
     }
-
 }
 
 [numthreads(256,1,1)]

@@ -36,10 +36,15 @@ public class LightParticleController : MonoBehaviour
     public Camera viewingCamera;
     public ComputeShader compShader;
 
+    [Header("Spawn Properties")]
+    public float timeToStart = 1;
+
     [Header("Player")]
     public Transform playerTransform;
 
+    [Header("Game Events")]
     public UnityEvent doneCollectingEvent = new UnityEvent();
+    public UnityEvent midpointsDoneEvent = new UnityEvent();
 
     protected int kernalID;
     protected int spawnKernalID;
@@ -47,6 +52,10 @@ public class LightParticleController : MonoBehaviour
     protected int groupSizeX;
     protected Bounds renderBounds;
     protected LightParticle[] particleArray;
+
+    // Particle Spawning Variables
+    protected bool particlesSpawned = false;
+    protected float startTimeCounter = 0;
 
     // How many particles have been set to their midpoint location.
     protected int midpointParticles = 0;
@@ -68,6 +77,7 @@ public class LightParticleController : MonoBehaviour
         particleVertAndFrag.SetVector("cameraForward", viewingCamera.transform.forward);
 
         Invoke("checkAllParticlesCaptured", .5f);
+        DisableCapture();
     }
 
     protected void IntializeParticles()
@@ -84,7 +94,6 @@ public class LightParticleController : MonoBehaviour
             particleArray[i].startPosition.x = start.x;
             particleArray[i].startPosition.y = start.y;
             particleArray[i].startPosition.z = start.z;
-            Debug.Log(start);
 
             particleArray[i].velocity.x = 0;
             particleArray[i].velocity.y = 0;
@@ -170,6 +179,12 @@ public class LightParticleController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (particlesSpawned && startTimeCounter < timeToStart)
+        {
+            startTimeCounter += Time.deltaTime;
+            compShader.SetFloat("startLerp", startTimeCounter / timeToStart);
+        }
+
         compShader.SetFloat("deltaTime", Time.deltaTime);
         SetPlayerLoc();
 
@@ -196,8 +211,8 @@ public class LightParticleController : MonoBehaviour
 
     public void DispatchSpawn()
     {
+        particlesSpawned = true;
         compShader.Dispatch(spawnKernalID, groupSizeX, 1, 1);
-        Debug.Log("Spawned!!!");
     }
 
     public void EnableCapture()
@@ -213,6 +228,7 @@ public class LightParticleController : MonoBehaviour
     public void StartParticleMidpoints()
     {
         InvokeRepeating("updateMidpointParticles", 0, .5f);
+        InvokeRepeating("checkAllMidpoints", 1.0f, 1.0f);
     }
 
     protected void updateMidpointParticles()
@@ -231,6 +247,11 @@ public class LightParticleController : MonoBehaviour
     protected void checkAllParticlesCaptured()
     {
         AsyncGPUReadback.Request(particleBuffer, readAllParticles);
+    }
+
+    protected void checkAllMidpoints()
+    {
+        AsyncGPUReadback.Request(particleBuffer, readAllMidpoints);
     }
 
     protected void readAllParticles(AsyncGPUReadbackRequest request)
@@ -257,6 +278,30 @@ public class LightParticleController : MonoBehaviour
         else
         {
             Invoke("checkAllParticlesCaptured", .5f);
+        }
+    }
+
+    protected void readAllMidpoints(AsyncGPUReadbackRequest request)
+    {
+        if (request.hasError)
+        {
+            Debug.LogError("GPU request Error");
+            return;
+        }
+
+        var data = request.GetData<LightParticle>();
+        int captureCount = 0;
+
+        for (int i = 0; i < data.Length; i++)
+        {
+            if (data[i].state == 5)
+                captureCount++;
+        }
+
+        if (captureCount == particleCount)
+        {
+            midpointsDoneEvent.Invoke();
+            CancelInvoke("checkAllMidpoints");
         }
     }
 

@@ -39,7 +39,7 @@ Material:
     m_Floats:
     - Displacement: 10
     - EdgeThreshold: 0.03
-    - NormalStrength: 9.64
+    - NormalStrength: 12.94
     m_Colors:
     - EdgeColor: {r: 1, g: 0.98039216, b: 0.627451, a: 1}
     - color1: {r: 0.011003822, g: 0.008069291, b: 0.1509434, a: 1}
