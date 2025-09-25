@@ -20,23 +20,31 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: UnlitOcean
+  m_Name: OceanBackground
   m_Shader: {fileID: -6465566751694194690, guid: e89cbacdf03d41e42aedf78d5614df60, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _ALPHAPREMULTIPLY_ON
+  - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    RenderType: Transparent
   disabledShaderPasses:
   - MOTIONVECTORS
+  - DepthOnly
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: 72322acd9b31f5d448588be73cabdb60, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -51,8 +59,32 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Blend: 0
+    - _BlendModePreserveSpecular: 1
+    - _CastShadows: 1
+    - _Cull: 2
+    - _DstBlend: 10
+    - _MaxGradient: 200
+    - _MinGradient: 100
     - _QueueControl: 0
     - _QueueOffset: 0
-    m_Colors: []
+    - _ReceiveShadows: 1
+    - _RippleScale: 0.01
+    - _RippleSpeed: -0.5
+    - _Ripple_Frequency: 1
+    - _SrcBlend: 1
+    - _Surface: 1
+    - _WorkflowMode: 1
+    - _ZTest: 4
+    - _ZWrite: 0
+    - _ZWriteControl: 0
+    m_Colors:
+    - _DeepOceanWater: {r: 0.0019381983, g: 0.0061049066, b: 0.088050246, a: 1}
+    - _FocalPoint: {r: 0, g: 0, b: 0, a: 0}
+    - _MidColor: {r: 0.07154084, g: 0, b: 0.24528301, a: 1}
+    - _Ripple_Color: {r: 0.41034758, g: 0.58701915, b: 0.9811321, a: 1}
+    - _Test: {r: 0.9748427, g: 0.9362851, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
