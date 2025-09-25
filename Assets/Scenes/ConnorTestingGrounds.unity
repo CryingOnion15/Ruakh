@@ -535,7 +535,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
-  m_RequiresOpaqueTextureOption: 2
+  m_RequiresOpaqueTextureOption: 1
   m_CameraType: 0
   m_Cameras: []
   m_RendererIndex: 0
@@ -645,7 +645,7 @@ Transform:
   m_GameObject: {fileID: 1244408255}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -515, y: -23, z: 45}
+  m_LocalPosition: {x: -246, y: 8, z: -239}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -891,7 +891,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: -0, z: -10}
-  m_LocalScale: {x: 184.56009, y: 1, z: 114.31535}
+  m_LocalScale: {x: 148.6965, y: 1, z: 114.31535}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 753135242}
@@ -6366,7 +6366,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2014261632
 Transform:
   m_ObjectHideFlags: 0
@@ -6377,7 +6377,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 114}
-  m_LocalScale: {x: 207.67671, y: 1, z: 128.63364}
+  m_LocalScale: {x: 227.34427, y: 1, z: 128.63364}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 753135242}
