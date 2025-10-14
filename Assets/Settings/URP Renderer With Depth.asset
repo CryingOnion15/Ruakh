@@ -1,5 +1,30 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-1208166077982104476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3806bd33bb106ed43bb6260c981d8e73, type: 3}
+  m_Name: DepthOutlineFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_PassEvent: 600
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  textureOverideMaterial: {fileID: 2100000, guid: ac1d8120c6f27ca459ef8b29c4af87ca, type: 2}
+  outlineMaterial: {fileID: 2100000, guid: 4088feeeea6ea8f4bb9f91a5d905be39, type: 2}
+  outlineSettings:
+    edgeThickness: 1
+    edgeColor: {r: 0, g: 0, b: 0, a: 1}
+    depthThreshold: 1.37
+    normalThreshold: 0.01
+    colorThreshold: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24,9 +49,10 @@ MonoBehaviour:
     probeSamplingDebugMesh: {fileID: 0}
     probeSamplingDebugTexture: {fileID: 0}
     probeVolumeBlendStatesCS: {fileID: 0}
-  m_RendererFeatures: []
-  m_RendererFeatureMap: 
-  m_UseNativeRenderPass: 0
+  m_RendererFeatures:
+  - {fileID: -1208166077982104476}
+  m_RendererFeatureMap: 6424336c5abb3bef
+  m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_AssetVersion: 2
@@ -43,7 +69,7 @@ MonoBehaviour:
     passOperation: 2
     failOperation: 0
     zFailOperation: 0
-  m_ShadowTransparentReceive: 1
+  m_ShadowTransparentReceive: 0
   m_RenderingMode: 0
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 1
@@ -51,3 +77,28 @@ MonoBehaviour:
   m_DepthTextureFormat: 0
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1
+--- !u!114 &3926295023964142076
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3806bd33bb106ed43bb6260c981d8e73, type: 3}
+  m_Name: DepthOutlineFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_PassEvent: 500
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 0
+  textureOverideMaterial: {fileID: 0}
+  outlineMaterial: {fileID: 0}
+  outlineSettings:
+    edgeThickness: 3
+    edgeColor: {r: 0, g: 0, b: 0, a: 1}
+    depthThreshold: 0.001
+    normalThreshold: 0.25
+    colorThreshold: 2
