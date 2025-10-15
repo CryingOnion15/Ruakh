@@ -1,8 +1,5 @@
 Shader "CustomRenderPass/OverrideTextureData"
 {
-    Properties
-    {
-    }
     SubShader
     {
         Pass
@@ -31,9 +28,6 @@ Shader "CustomRenderPass/OverrideTextureData"
                 float3 normalWS : TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
             v2f vert (vertexAttributes v)
             {
                 v2f o;
@@ -42,6 +36,8 @@ Shader "CustomRenderPass/OverrideTextureData"
                 return o;
             }
 
+            // Struct to define our value at each pixel for our outline data.
+            // Stained Glass Color Texture Pass use these value as the render targets.
             struct FragmentOutput
             {
                 float4 color  : SV_Target0;
@@ -53,19 +49,25 @@ Shader "CustomRenderPass/OverrideTextureData"
             {
                 FragmentOutput Out;
 
-                //Get the screen color.
+                //Get the screen uv.
                 float2 uv = IN.positionCS.xy / IN.positionCS.w;
-                uv = uv * 0.5 + 0.5;
 
+                uv = uv * 0.5 + 0.5;
+#if UNITY_UV_STARTS_AT_TOP
+                uv.y = 1.0 - uv.y;
+#endif
+
+                // Sample the screen color and convert to luminence.
                 float4 color = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, uv);
                 Out.color = color.r * 0.3 + color.g * 0.59 + color.b * 0.11;
 
-                float rawDepth = SampleSceneDepth(uv) * 0.5 + 0.5;
-                float linearDepth = _ProjectionParams.z / (rawDepth * _ProjectionParams.w - _ProjectionParams.y);
-                Out.depth = linearDepth;
+                // Sample the scene depth. (Come from the DeclareDepthTexture.hlsl)
+                Out.depth = SampleSceneDepth(uv);
 
+                // Pack the normal into 0-1 for the texture.
                 Out.normal = IN.normalWS * 0.5 + 0.5;
 
+                // Return out 3 textures for data usage in the outline.
                 return Out;
             }
             ENDHLSL

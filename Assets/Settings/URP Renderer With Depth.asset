@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: DepthOutlineFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  m_PassEvent: 600
+  m_PassEvent: 500
   layerMask:
     serializedVersion: 2
     m_Bits: 1
   textureOverideMaterial: {fileID: 2100000, guid: ac1d8120c6f27ca459ef8b29c4af87ca, type: 2}
   outlineMaterial: {fileID: 2100000, guid: 4088feeeea6ea8f4bb9f91a5d905be39, type: 2}
   outlineSettings:
-    edgeThickness: 1
+    edgeThickness: 2
     edgeColor: {r: 0, g: 0, b: 0, a: 1}
-    depthThreshold: 1.37
-    normalThreshold: 0.01
-    colorThreshold: 1
+    depthThreshold: 0.1
+    normalThreshold: 0.25
+    colorThreshold: 50
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

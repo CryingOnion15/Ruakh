@@ -11,15 +11,6 @@ Shader "CustomRenderPass/OutlineShader"
 
     SubShader
     {
-        Tags
-        {
-            "RenderPipeline" = "UniversalPipeline"
-        }
-
-        ZWrite Off
-        Cull Off
-        Blend SrcAlpha OneMinusSrcAlpha
-
         Pass 
         {
             Name "EDGE DETECTION OUTLINE"
@@ -29,7 +20,7 @@ Shader "CustomRenderPass/OutlineShader"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
 
-            //Samplers 
+            // Samplers 
             TEXTURE2D(_FilteredColor);
             SAMPLER(sampler_FilteredColor);
             TEXTURE2D(_FilteredDepth);
@@ -37,14 +28,15 @@ Shader "CustomRenderPass/OutlineShader"
             TEXTURE2D(_FilteredNormals);
             SAMPLER(sampler_FilteredNormals);
 
-            //Shader properties.
+            // Shader properties.
             float _OutlineThickness;
             float4 _OutlineColor;
             float _depthThreshold;
             float _colorThreshold;
             float _normalThreshold;
 
-            #pragma vertex Vert // vertex shader is provided by the Blit.hlsl include
+            // Vertex shader is provided by the Blit.hlsl include
+            #pragma vertex Vert 
             #pragma fragment frag
 
             // Edge detection kernel that works by taking the sum of the squares of the differences between diagonally adjacent pixels (Roberts Cross).
@@ -84,8 +76,10 @@ Shader "CustomRenderPass/OutlineShader"
                 
                 for (int i = 0; i < 4; i++) {
                     depth_samples[i] = SAMPLE_TEXTURE2D(_FilteredDepth, sampler_FilteredDepth, uvs[i]);
-                    normal_samples[i] = SAMPLE_TEXTURE2D(_FilteredNormals, sampler_FilteredNormals, uvs[i]);
                     luminance_samples[i] = SAMPLE_TEXTURE2D(_FilteredColor, sampler_FilteredColor, uvs[i]);
+
+                    // Unpack normal values from 0-1 back to -1-1.
+                    normal_samples[i] = SAMPLE_TEXTURE2D(_FilteredNormals, sampler_FilteredNormals, uvs[i]) * 2.0 - 1.0;
                 }
                 
                 // Apply edge detection kernel on the samples to compute edges.
@@ -101,11 +95,9 @@ Shader "CustomRenderPass/OutlineShader"
                 edge_luminance = edge_luminance > _colorThreshold ? 1 : 0;
                 
                 // Combine the edges from depth/normals/luminance using the max operator.
-                //float edge = max(edge_depth, max(edge_normal, edge_luminance));
-                float edge = edge_depth;
+                float edge = max(edge_depth, max(edge_normal, edge_luminance));
 
-                
-                //Get screen color
+                // Get screen color
                 float4 screenColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, uv);
 
                 // Color the edge with a custom color.

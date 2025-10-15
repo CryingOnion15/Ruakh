@@ -14,18 +14,15 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         internal RendererListHandle listHandle;
     }
 
-    // Function used to transfer the material from the renderer feature to the render pass.
+    // Setup function for the render pass.
     public void Setup(LayerMask mask, Material oMaterial)
     {
         layerMask = mask;
         overrideMat = oMaterial;
-
-        //The pass will read the current color texture. That needs to be an intermediate texture. It's not supported to use the BackBuffer as input texture.
-        //By setting this property, URP will automatically create an intermediate texture. This has a performance cost so don't set this if you don't need it.
-        //It's good practice to set it here and not from the RenderFeature. This way, the pass is selfcontaining and you can use it to directly enqueue the pass from a monobehaviour without a RenderFeature.
         requiresIntermediateTexture = true;
     }
 
+    // Override to define the render pass instructions.
     public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
     {
         // Get frame data.
@@ -35,25 +32,25 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         var lightData = frameData.Get<UniversalLightData>();
         var transferData = frameData.Create<FilteredTextureData>();
 
-        // Create the layer texture for color.
+        // Create the filtered color texture.
         var destinationDesc = resourceData.activeColorTexture.GetDescriptor(renderGraph);
         destinationDesc.name = "Filtered Color Texture";
 
-        var layerTexture = renderGraph.CreateTexture(destinationDesc);
+        var filteredColor = renderGraph.CreateTexture(destinationDesc);
 
-        // Create the depth texture.
+        // Create the filtered depth data texture.
         var depthDesc = destinationDesc;
         depthDesc.name = "Filtered Depth Texture";
         depthDesc.colorFormat = GraphicsFormat.R32_SFloat;
         var filteredDepth = renderGraph.CreateTexture(depthDesc);
 
-        // Create the normal texture.
+        // Create the filtered normal data texture.
         var normalDesc = destinationDesc;
         normalDesc.name = "Filtered Normals Texture";
         normalDesc.colorFormat = GraphicsFormat.R8G8B8A8_UNorm;
         var filteredNormals = renderGraph.CreateTexture(normalDesc);
 
-        // Create the render pass.
+        // Create the render pass builder.
         using var builder = renderGraph.AddRasterRenderPass<PassData>(
             "Draw Active Color Layer Mask",
             out var passData
@@ -71,6 +68,7 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
             lightData,
             sortFlags
         );
+        // Override the material to produce the data we need for the outline pass. (DataOverrideShader.hlsl)
         drawSettings.overrideMaterial = overrideMat;
 
         RendererListParams rParams = new RendererListParams(
@@ -79,13 +77,14 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
             filterSettings
         );
 
-        //Set the pass data.
+        // Set the pass data.
         passData.listHandle = renderGraph.CreateRendererList(rParams);
 
+        // Update the builder settings and set the render function.
         builder.UseAllGlobalTextures(true);
-        builder.SetRenderAttachment(layerTexture, 0, AccessFlags.Write);
+        builder.SetRenderAttachment(filteredColor, 0, AccessFlags.Write);
         builder.SetRenderAttachment(filteredDepth, 1, AccessFlags.Write);
-        builder.SetRenderAttachment(filteredNormals, 2, AccessFlags.Write); //???
+        builder.SetRenderAttachment(filteredNormals, 2, AccessFlags.Write);
         builder.UseRendererList(passData.listHandle);
         builder.SetRenderFunc(
             (PassData data, RasterGraphContext context) =>
@@ -94,8 +93,8 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
             }
         );
 
-        // Set the transfer data.
-        transferData.filteredTexture = layerTexture;
+        // Set the transfer frame data.
+        transferData.filteredTexture = filteredColor;
         transferData.filteredDepth = filteredDepth;
         transferData.filteredNormals = filteredNormals;
     }

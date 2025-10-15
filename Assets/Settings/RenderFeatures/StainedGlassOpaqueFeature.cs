@@ -3,6 +3,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
+// Data class used to define the ContextItem to pass between the render passes.
 public class FilteredTextureData : ContextItem
 {
     public TextureHandle filteredTexture;
@@ -19,7 +20,6 @@ public class FilteredTextureData : ContextItem
 
 public class StainedGlassOpaqueFeature : ScriptableRendererFeature
 {
-    // Inputs in the inspector to change the settings for the renderer feature.
     [SerializeField]
     RenderPassEvent m_PassEvent = RenderPassEvent.AfterRenderingTransparents;
 
@@ -37,6 +37,7 @@ public class StainedGlassOpaqueFeature : ScriptableRendererFeature
     [SerializeField]
     EdgeDetectionSettings outlineSettings;
 
+    // Render Passes
     StainedGlassColorTexturePass texturePass;
     StainedGlassOutlinePass outlinePass;
 
@@ -72,23 +73,26 @@ public class StainedGlassOpaqueFeature : ScriptableRendererFeature
             return;
         }
 
-        //Enque the render passes.
+        // Setup and configure the filering pass.
         texturePass.ConfigureInput(
             ScriptableRenderPassInput.Depth
                 | ScriptableRenderPassInput.Normal
                 | ScriptableRenderPassInput.Color
         );
-        // Perform the filtering pass.
         texturePass.Setup(layerMask, textureOverideMaterial);
+
+        // Queue the filtering pass.
         renderer.EnqueuePass(texturePass);
 
-        // Perform the outline pass.
+        // Setup and configure the outline pass.
         outlinePass.ConfigureInput(
             ScriptableRenderPassInput.Depth
                 | ScriptableRenderPassInput.Normal
                 | ScriptableRenderPassInput.Color
         );
         outlinePass.Setup(outlineMaterial, outlineSettings);
+
+        // Queue the outline pass.
         renderer.EnqueuePass(outlinePass);
     }
 }

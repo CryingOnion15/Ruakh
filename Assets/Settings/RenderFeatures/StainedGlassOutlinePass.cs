@@ -6,6 +6,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
 [Serializable]
+// Settings class used for edge detection properties.
 public class EdgeDetectionSettings
 {
     public int edgeThickness = 3;
@@ -20,6 +21,7 @@ public class StainedGlassOutlinePass : ScriptableRenderPass
     // Material used in the blit operation.
     Material material;
 
+    // Used to find properties on a shader.
     private static readonly int OutlineThicknessProperty = Shader.PropertyToID("_OutlineThickness");
     private static readonly int OutlineColorProperty = Shader.PropertyToID("_OutlineColor");
     private static readonly int DepthThresholdProperty = Shader.PropertyToID("_depthThreshold");
@@ -31,7 +33,7 @@ public class StainedGlassOutlinePass : ScriptableRenderPass
         internal Material blitMaterial;
     }
 
-    // Function used to transfer the material from the renderer feature to the render pass.
+    // Setup the render pass with necessary data.
     public void Setup(Material mat, EdgeDetectionSettings settings)
     {
         material = mat;
@@ -47,41 +49,46 @@ public class StainedGlassOutlinePass : ScriptableRenderPass
         requiresIntermediateTexture = true;
     }
 
+    // Override to define the render pass instructions.
     public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
     {
+        // Name the render pass.
         string passName = "Outline Pass - Copy Active Color";
+
+        // Get the frame data needed.
         UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
-        var textureData = frameData.Get<FilteredTextureData>();
+        FilteredTextureData textureData = frameData.Get<FilteredTextureData>();
 
         // Create the render pass.
         using var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var data);
 
-        //Assign the material to the pass data.
+        // Assign the material to the pass data.
         data.blitMaterial = material;
 
-        // Set the builder settings.
+        // Create a target texture to assing to the render attachment.
         var target = renderGraph.CreateTexture(resourceData.cameraColor.GetDescriptor(renderGraph));
 
+        // Set the builder settings and set the render functions.
         builder.SetRenderAttachment(target, 0, AccessFlags.ReadWrite);
-        //builder.UseTexture(resourceData.cameraColor);
         builder.UseTexture(textureData.filteredTexture);
         builder.UseTexture(textureData.filteredDepth);
         builder.UseTexture(textureData.filteredNormals);
-
-        //builder.UseTexture(textureData.filteredTexture);
         builder.UseAllGlobalTextures(true);
         builder.AllowPassCulling(false);
         builder.SetRenderFunc(
             (PassData data, RasterGraphContext context) =>
             {
+                // Set the material textures.
                 material.SetTexture("_FilteredColor", textureData.filteredTexture);
                 material.SetTexture("_FilteredDepth", textureData.filteredDepth);
                 material.SetTexture("_FilteredNormals", textureData.filteredNormals);
 
+                // Blit the target texture with via the material.
                 Blitter.BlitTexture(context.cmd, target, Vector2.one, data.blitMaterial, 0);
             }
         );
 
+        // Set the result to the camera color.
         resourceData.cameraColor = target;
     }
 }
