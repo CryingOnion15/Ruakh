@@ -48,33 +48,33 @@ Shader "CustomRenderPass/ObjectOutlineShader"
                 return sqrt(difference_1 * difference_1 + difference_2 * difference_2);
             }
 
-            struct appdata
-            {
-                float2 uv : TEXCOORD0; // only UV
-            };
+            // struct appdata
+            // {
+            //     float2 uv : TEXCOORD0;
+            // };
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0; // pass UV to fragment
-            };
+            // struct v2f
+            // {
+            //     float2 uv : TEXCOORD0;
+            // };
 
-            v2f vert(appdata v) {
-                v2f o;
+            // v2f vert(appdata v) {
+            //     v2f o;
 
-                o.uv = v.uv;
+            //     o.uv = v.uv;
 
-                #if UNITY_UV_STARTS_AT_TOP
-                    o.uv.y = 1.0 - o.uv.y;
-                #endif
+            //     #if UNITY_UV_STARTS_AT_TOP
+            //         o.uv.y = 1.0 - o.uv.y;
+            //     #endif
 
-                return o;
-            }
+            //     return o;
+            // }
 
 
-            half4 frag(v2f IN) : SV_TARGET
+            float4 frag(Varyings IN) : SV_TARGET
             {
                 // Screen-space coordinates which we will use to sample.
-                float2 uv = IN.uv;
+                float2 uv = IN.texcoord;
                 
                 // Generate 4 diagonally placed samples.
                 const float half_width_f = floor(_OutlineThickness * 0.5);

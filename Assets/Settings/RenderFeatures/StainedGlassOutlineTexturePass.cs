@@ -46,13 +46,6 @@ public class StainedGlassOutlineTexturePass : ScriptableRenderPass
 
         var screenSpaceOutlineTexture = renderGraph.CreateTexture(screenSpaceOutlineDesc);
 
-        var blitParams = new RenderGraphUtils.BlitMaterialParameters(
-            glassData.screenColorTextureHandle,
-            screenSpaceOutlineTexture,
-            outlineBlitMaterial,
-            0
-        );
-
         using var builder = renderGraph.AddRasterRenderPass<PassData>(
             "Outline Pass - Create Outline Texture.",
             out PassData data

@@ -25,9 +25,9 @@ MonoBehaviour:
   outlineSettings:
     edgeThickness: 1
     edgeColor: {r: 0, g: 0, b: 0, a: 1}
-    depthThreshold: 0.001
-    normalThreshold: 0.01
-    colorThreshold: 2
+    depthThreshold: 0.005
+    normalThreshold: 0.005
+    colorThreshold: 0.005
   shadowMapResolution: 1024
   postProcessDrawMaterial: {fileID: 2100000, guid: 86a6b88292e507e4196c95d3a81b2666, type: 2}
 --- !u!114 &11400000

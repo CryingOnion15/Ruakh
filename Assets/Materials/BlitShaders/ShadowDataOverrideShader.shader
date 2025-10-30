@@ -30,8 +30,8 @@ Shader "CustomRenderPass/OverrideTextureData"
             struct v2f
             {
                 float4 positionCS : SV_POSITION;
-                float3 normalWS : TEXCOORD0;
-                float2 uv : TEXCOORD1;
+                float3 normalWS : NORMAL;
+                float2 uv : TEXCOORD0;
             };
 
             v2f vert (vertexAttributes v)

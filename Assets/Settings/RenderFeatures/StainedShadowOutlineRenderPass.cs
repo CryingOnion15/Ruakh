@@ -70,7 +70,6 @@ public class StainedShadowOutlineRenderPass : ScriptableRenderPass
                 outlineBlitMaterial.SetTexture("_ColorTex", glassData.lightLumTextureHandle);
                 outlineBlitMaterial.SetTexture("_DepthTex", glassData.lightDepthTextureHandle);
                 outlineBlitMaterial.SetTexture("_NormalTex", glassData.lightNormalTextureHandle);
-                // Blit using the outline material.
                 Blitter.BlitTexture(context.cmd, Vector4.one, outlineBlitMaterial, 0);
                 Blitter.Cleanup();
             }
