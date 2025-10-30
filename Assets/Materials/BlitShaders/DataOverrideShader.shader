@@ -41,8 +41,8 @@ Shader "CustomRenderPass/OverrideTextureData"
             struct FragmentOutput
             {
                 float4 color  : SV_Target0;
-                float depth   : SV_Target1;
-                float3 normal : SV_Target2;
+                float3 normal   : SV_Target1;
+                //float3 normal : SV_Target2;
             };
 
             FragmentOutput frag (v2f IN) : SV_Target
@@ -50,22 +50,21 @@ Shader "CustomRenderPass/OverrideTextureData"
                 FragmentOutput Out;
 
                 //Get the screen uv.
-                float2 uv = IN.positionCS.xy / IN.positionCS.w;
-
-                uv = uv * 0.5 + 0.5;
-#if UNITY_UV_STARTS_AT_TOP
+                float2 uv = IN.positionCS.xy * rcp(_ScreenParams.xy);
+                #if UNITY_UV_STARTS_AT_TOP
                 uv.y = 1.0 - uv.y;
-#endif
+                #endif
 
                 // Sample the screen color and convert to luminence.
                 float4 color = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, uv);
                 Out.color = color.r * 0.3 + color.g * 0.59 + color.b * 0.11;
 
                 // Sample the scene depth. (Come from the DeclareDepthTexture.hlsl)
-                Out.depth = SampleSceneDepth(uv);
+                //Out.depth = SampleSceneDepth(uv);.
 
                 // Pack the normal into 0-1 for the texture.
-                Out.normal = IN.normalWS * 0.5 + 0.5;
+                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, IN.normalWS);
+                Out.normal = normalVS * 0.5 + 0.5;
 
                 // Return out 3 textures for data usage in the outline.
                 return Out;

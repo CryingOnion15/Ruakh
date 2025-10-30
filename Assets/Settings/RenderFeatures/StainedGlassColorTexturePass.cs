@@ -19,6 +19,7 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
     {
         layerMask = mask;
         overrideMat = oMaterial;
+
         requiresIntermediateTexture = true;
     }
 
@@ -30,10 +31,14 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         var resourceData = frameData.Get<UniversalResourceData>();
         var renderingData = frameData.Get<UniversalRenderingData>();
         var lightData = frameData.Get<UniversalLightData>();
-        var transferData = frameData.Create<FilteredTextureData>();
+        var transferData = frameData.Create<StainedGlassData>();
 
         // Create the filtered color texture.
-        var destinationDesc = resourceData.activeColorTexture.GetDescriptor(renderGraph);
+        var destinationDesc = new TextureDesc(
+            cameraData.camera.scaledPixelWidth,
+            cameraData.camera.scaledPixelHeight
+        );
+        destinationDesc.format = GraphicsFormat.R16G16B16A16_SFloat;
         destinationDesc.name = "Filtered Color Texture";
 
         var filteredColor = renderGraph.CreateTexture(destinationDesc);
@@ -41,7 +46,8 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         // Create the filtered depth data texture.
         var depthDesc = destinationDesc;
         depthDesc.name = "Filtered Depth Texture";
-        depthDesc.colorFormat = GraphicsFormat.R32_SFloat;
+        depthDesc.colorFormat = GraphicsFormat.D32_SFloat;
+        depthDesc.depthBufferBits = DepthBits.Depth24;
         var filteredDepth = renderGraph.CreateTexture(depthDesc);
 
         // Create the filtered normal data texture.
@@ -68,7 +74,8 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
             lightData,
             sortFlags
         );
-        // Override the material to produce the data we need for the outline pass. (DataOverrideShader.hlsl)
+
+        // // Override the material to produce the data we need for the outline pass. (DataOverrideShader.hlsl)
         drawSettings.overrideMaterial = overrideMat;
 
         RendererListParams rParams = new RendererListParams(
@@ -81,10 +88,13 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         passData.listHandle = renderGraph.CreateRendererList(rParams);
 
         // Update the builder settings and set the render function.
-        builder.UseAllGlobalTextures(true);
-        builder.SetRenderAttachment(filteredColor, 0, AccessFlags.Write);
-        builder.SetRenderAttachment(filteredDepth, 1, AccessFlags.Write);
-        builder.SetRenderAttachment(filteredNormals, 2, AccessFlags.Write);
+        //builder.UseAllGlobalTextures(true);
+        builder.SetRenderAttachment(filteredColor, 0, AccessFlags.ReadWrite);
+        builder.SetRenderAttachment(filteredNormals, 1, AccessFlags.ReadWrite);
+        builder.SetRenderAttachmentDepth(filteredDepth, AccessFlags.Write);
+        builder.SetGlobalTextureAfterPass(filteredColor, Shader.PropertyToID("_TestColor"));
+        builder.SetGlobalTextureAfterPass(filteredDepth, Shader.PropertyToID("_TestDepth"));
+        builder.SetGlobalTextureAfterPass(filteredNormals, Shader.PropertyToID("_TestNormals"));
         builder.UseRendererList(passData.listHandle);
         builder.SetRenderFunc(
             (PassData data, RasterGraphContext context) =>
@@ -94,8 +104,8 @@ public class StainedGlassColorTexturePass : ScriptableRenderPass
         );
 
         // Set the transfer frame data.
-        transferData.filteredTexture = filteredColor;
-        transferData.filteredDepth = filteredDepth;
-        transferData.filteredNormals = filteredNormals;
+        transferData.screenColorTextureHandle = filteredColor;
+        transferData.screenDepthTextureHandle = filteredDepth;
+        transferData.screenNormalTextureHandle = filteredNormals;
     }
 }

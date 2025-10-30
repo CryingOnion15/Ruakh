@@ -1,19 +1,10 @@
-Shader "CustomRenderPass/OutlineShader"
+Shader "CustomRenderPass/ObjectOutlineShader"
 {
-    Properties
-    {
-        _OutlineThickness ("Outline Thickness", Float) = 1
-        _OutlineColor ("Outline Color", Color) = (0, 0, 0, 1)
-        _FilteredColor ("Filtered Color", 2D) = "black" {}
-        _FilteredDepth ("Filtered Depth", 2D) = "black" {}
-        _FilteredNormals ("Filtered Normals", 2D) = "black" {}
-    }
-
     SubShader
     {
         Pass 
         {
-            Name "EDGE DETECTION OUTLINE"
+            Name "EDGE DETECTION OUTLINE - UV space"
             
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -21,12 +12,14 @@ Shader "CustomRenderPass/OutlineShader"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
 
             // Samplers 
-            TEXTURE2D(_FilteredColor);
-            SAMPLER(sampler_FilteredColor);
-            TEXTURE2D(_FilteredDepth);
-            SAMPLER(sampler_FilteredDepth);
-            TEXTURE2D(_FilteredNormals);
-            SAMPLER(sampler_FilteredNormals);
+            TEXTURE2D(_ColorTex);
+            SAMPLER(sampler_ColorTex);
+            TEXTURE2D(_DepthTex);
+            SAMPLER(sampler_DepthTex);
+            TEXTURE2D(_NormalTex);
+            SAMPLER(sampler_NormalTex);
+
+            // Globals
 
             // Shader properties.
             float _OutlineThickness;
@@ -55,31 +48,55 @@ Shader "CustomRenderPass/OutlineShader"
                 return sqrt(difference_1 * difference_1 + difference_2 * difference_2);
             }
 
-            half4 frag(Varyings IN) : SV_TARGET
+            struct appdata
+            {
+                float2 uv : TEXCOORD0; // only UV
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0; // pass UV to fragment
+            };
+
+            v2f vert(appdata v) {
+                v2f o;
+
+                o.uv = v.uv;
+
+                #if UNITY_UV_STARTS_AT_TOP
+                    o.uv.y = 1.0 - o.uv.y;
+                #endif
+
+                return o;
+            }
+
+
+            half4 frag(v2f IN) : SV_TARGET
             {
                 // Screen-space coordinates which we will use to sample.
-                float2 uv = IN.texcoord;
-                float2 texel_size = float2(1.0 / _ScreenParams.x, 1.0 / _ScreenParams.y);
+                float2 uv = IN.uv;
                 
                 // Generate 4 diagonally placed samples.
                 const float half_width_f = floor(_OutlineThickness * 0.5);
                 const float half_width_c = ceil(_OutlineThickness * 0.5);
 
+                float2 texelSize = 1 / float2(1024.0, 1024.0);
+
                 float2 uvs[4];
-                uvs[0] = uv + texel_size * float2(half_width_f, half_width_c) * float2(-1, 1);  // top left
-                uvs[1] = uv + texel_size * float2(half_width_c, half_width_c) * float2(1, 1);   // top right
-                uvs[2] = uv + texel_size * float2(half_width_f, half_width_f) * float2(-1, -1); // bottom left
-                uvs[3] = uv + texel_size * float2(half_width_c, half_width_f) * float2(1, -1);  // bottom right
+                uvs[0] = uv + texelSize * float2(half_width_f, half_width_c) * float2(-1, 1);  // top left
+                uvs[1] = uv + texelSize * float2(half_width_c, half_width_c) * float2(1, 1);   // top right
+                uvs[2] = uv + texelSize * float2(half_width_f, half_width_f) * float2(-1, -1); // bottom left
+                uvs[3] = uv + texelSize * float2(half_width_c, half_width_f) * float2(1, -1);  // bottom right
                 
                 float3 normal_samples[4];
                 float depth_samples[4], luminance_samples[4];
                 
                 for (int i = 0; i < 4; i++) {
-                    depth_samples[i] = SAMPLE_TEXTURE2D(_FilteredDepth, sampler_FilteredDepth, uvs[i]);
-                    luminance_samples[i] = SAMPLE_TEXTURE2D(_FilteredColor, sampler_FilteredColor, uvs[i]);
+                    depth_samples[i] = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uvs[i]);
+                    luminance_samples[i] = SAMPLE_TEXTURE2D(_ColorTex, sampler_ColorTex, uvs[i]);
 
                     // Unpack normal values from 0-1 back to -1-1.
-                    normal_samples[i] = SAMPLE_TEXTURE2D(_FilteredNormals, sampler_FilteredNormals, uvs[i]) * 2.0 - 1.0;
+                    normal_samples[i] = SAMPLE_TEXTURE2D(_NormalTex, sampler_NormalTex, uvs[i]) * 2.0 - 1.0;
                 }
                 
                 // Apply edge detection kernel on the samples to compute edges.
@@ -97,11 +114,8 @@ Shader "CustomRenderPass/OutlineShader"
                 // Combine the edges from depth/normals/luminance using the max operator.
                 float edge = max(edge_depth, max(edge_normal, edge_luminance));
 
-                // Get screen color
-                float4 screenColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, uv);
-
-                // Color the edge with a custom color.
-                return lerp(screenColor, _OutlineColor, edge);
+                // Return if there is an edge or not.
+                return float4(edge,0,0,1);
             }
             ENDHLSL
         }
