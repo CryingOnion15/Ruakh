@@ -132,7 +132,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             lightData,
             sortFlags
         );
-        //drawSettings.overrideMaterial = dataOverrideMaterial;
 
         RendererListParams rParams = new RendererListParams(
             renderingData.cullResults,
@@ -181,7 +180,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 context.cmd.SetViewProjectionMatrices(data.viewMat, data.projMat);
 
                 // Set Bias to prevent Shadow Acne
-                context.cmd.SetGlobalDepthBias(1.0f, 2.5f);
+                context.cmd.SetGlobalDepthBias(0f, 0f);
 
                 // Draw all geometry based on the renderer list.
                 context.cmd.DrawRendererList(data.rendererListHandle);

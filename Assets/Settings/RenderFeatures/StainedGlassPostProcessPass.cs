@@ -33,12 +33,13 @@ public class StainedGlassPostProcessPass : ScriptableRenderPass
 
         // Set the builder settings and set the render functions.
         builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
+        builder.UseTexture(resourceData.activeDepthTexture);
         builder.AllowGlobalStateModification(true);
         builder.AllowPassCulling(false);
         builder.SetRenderFunc(
             (PassData data, RasterGraphContext context) =>
             {
-                Blitter.BlitTexture(context.cmd, Vector4.one, postProcessMaterial, 0);
+                Blitter.BlitTexture(context.cmd, Vector4.zero, postProcessMaterial, 0);
                 Blitter.Cleanup();
             }
         );
