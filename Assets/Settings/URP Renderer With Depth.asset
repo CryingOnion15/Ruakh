@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   outlinePassEvent: 100
-  postProcessEvent: 450
+  postProcessEvent: 550
   outlineMask:
     serializedVersion: 2
     m_Bits: 1
@@ -29,7 +29,7 @@ MonoBehaviour:
     normalThreshold: 0.005
     colorThreshold: 0.005
   shadowMapResolution: 1024
-  postProcessDrawMaterial: {fileID: 2100000, guid: e2f4750c0ef2fa3488dbe3869e9fbcba, type: 2}
+  postProcessDrawMaterial: {fileID: 2100000, guid: 1c77f655f99ca6e44a546831a4287b65, type: 2}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
