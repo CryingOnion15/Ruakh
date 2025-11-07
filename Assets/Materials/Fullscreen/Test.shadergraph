@@ -1053,20 +1053,6 @@
         {
             "m_OutputSlot": {
                 "m_Node": {
-                    "m_Id": "e2b30da81ef44f7ba1a7c211a409348c"
-                },
-                "m_SlotId": 3
-            },
-            "m_InputSlot": {
-                "m_Node": {
-                    "m_Id": "3b9db4952086471f97aef26e55731a53"
-                },
-                "m_SlotId": 0
-            }
-        },
-        {
-            "m_OutputSlot": {
-                "m_Node": {
                     "m_Id": "e7fea36452814d3489ae34dddfd80542"
                 },
                 "m_SlotId": 0
@@ -1132,6 +1118,20 @@
                     "m_Id": "a9ca704250af40689e514c36d56ceac4"
                 },
                 "m_SlotId": 1
+            }
+        },
+        {
+            "m_OutputSlot": {
+                "m_Node": {
+                    "m_Id": "f96971ea415a455e996cb7d26190540d"
+                },
+                "m_SlotId": 1
+            },
+            "m_InputSlot": {
+                "m_Node": {
+                    "m_Id": "3b9db4952086471f97aef26e55731a53"
+                },
+                "m_SlotId": 0
             }
         },
         {
@@ -1285,8 +1285,8 @@
     "m_ObjectId": "0319fd237c2041a884d2368b73dc6dbc",
     "m_Title": "Apply Outline",
     "m_Position": {
-        "x": 941.3333129882813,
-        "y": 568.0
+        "x": 941.333251953125,
+        "y": 568.0000610351563
     }
 }
 
@@ -1873,8 +1873,8 @@
     "m_ObjectId": "2320190d219a49f9868eed951a218f32",
     "m_Title": "Light Space UV",
     "m_Position": {
-        "x": -1857.33349609375,
-        "y": 315.99981689453127
+        "x": -1857.3333740234375,
+        "y": 316.00006103515627
     }
 }
 
@@ -1928,7 +1928,7 @@
     "m_Title": "Get Shadow Color",
     "m_Position": {
         "x": -1032.66650390625,
-        "y": 215.99981689453126
+        "y": 216.00006103515626
     }
 }
 
@@ -3784,8 +3784,8 @@
     "m_ObjectId": "6120780a56ff4b41988adabb2e145214",
     "m_Title": "Get the Screen Color",
     "m_Position": {
-        "x": -393.9998474121094,
-        "y": -483.33349609375
+        "x": -394.0,
+        "y": -483.3333740234375
     }
 }
 
@@ -3885,7 +3885,7 @@
     "m_ObjectId": "65748eb504f340cea49ddb1dab873085",
     "m_Title": "Get the Outline of the shadows",
     "m_Position": {
-        "x": -751.3333129882813,
+        "x": -751.333251953125,
         "y": 1126.66650390625
     }
 }
@@ -4474,7 +4474,7 @@
     "m_Title": "Get Light Space 0-1 Position",
     "m_Position": {
         "x": -4462.66650390625,
-        "y": 198.666748046875
+        "y": 198.66668701171876
     }
 }
 
@@ -5299,8 +5299,8 @@
     "m_ObjectId": "9f5f075fb905471e8628e72673ad5eee",
     "m_Title": "Screen to World Position",
     "m_Position": {
-        "x": -5515.333984375,
-        "y": -1941.3336181640625
+        "x": -5515.33349609375,
+        "y": -1941.33349609375
     }
 }
 
@@ -7323,7 +7323,7 @@
     "m_Title": "Depth Comparison",
     "m_Position": {
         "x": -1125.3333740234375,
-        "y": 1804.000244140625
+        "y": 1804.0
     }
 }
 

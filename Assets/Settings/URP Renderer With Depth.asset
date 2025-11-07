@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   outlinePassEvent: 100
-  postProcessEvent: 550
+  postProcessEvent: 450
   outlineMask:
     serializedVersion: 2
     m_Bits: 1
@@ -29,7 +29,7 @@ MonoBehaviour:
     normalThreshold: 0.005
     colorThreshold: 0.005
   shadowMapResolution: 1024
-  postProcessDrawMaterial: {fileID: 2100000, guid: 1c77f655f99ca6e44a546831a4287b65, type: 2}
+  postProcessDrawMaterial: {fileID: 2100000, guid: e2f4750c0ef2fa3488dbe3869e9fbcba, type: 2}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -59,7 +59,7 @@ MonoBehaviour:
   m_RendererFeatureMap: c1b6182ade4557d1
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
-  postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
+  postProcessData: {fileID: 0}
   m_AssetVersion: 2
   m_OpaqueLayerMask:
     serializedVersion: 2
@@ -77,8 +77,8 @@ MonoBehaviour:
   m_ShadowTransparentReceive: 0
   m_RenderingMode: 0
   m_DepthPrimingMode: 0
-  m_CopyDepthMode: 1
-  m_DepthAttachmentFormat: 0
+  m_CopyDepthMode: 0
+  m_DepthAttachmentFormat: 90
   m_DepthTextureFormat: 0
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1

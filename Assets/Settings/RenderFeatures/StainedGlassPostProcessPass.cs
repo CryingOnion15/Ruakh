@@ -33,7 +33,6 @@ public class StainedGlassPostProcessPass : ScriptableRenderPass
 
         // Set the builder settings and set the render functions.
         builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
-        builder.UseTexture(resourceData.activeDepthTexture);
         builder.AllowGlobalStateModification(true);
         builder.AllowPassCulling(false);
         builder.SetRenderFunc(

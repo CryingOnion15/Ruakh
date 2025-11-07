@@ -144,6 +144,7 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
             renderer.EnqueuePass(shadowRenderPass);
             renderer.EnqueuePass(shadowOutlinePass);
 
+            postProcessPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             // Queue Post Process Pass.
             renderer.EnqueuePass(postProcessPass);
         }
