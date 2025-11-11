@@ -1,7 +1,4 @@
-using System.Data.Common;
-using UnityEditor.Rendering.Canvas.ShaderGraph;
 using UnityEngine;
-using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -78,7 +75,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         // Create the color desc.
         normalDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
         {
-            colorFormat = GraphicsFormat.R8G8B8A8_UNorm,
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
             depthBufferBits = DepthBits.None,
             dimension = TextureDimension.Tex2D,
             name = "_StainedShadowNormalMap",
@@ -186,7 +183,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 context.cmd.DrawRendererList(data.rendererListHandle);
 
                 // Reset Command Buffer.
-                context.cmd.SetGlobalDepthBias(0.0f, 0.0f);
+                //context.cmd.SetGlobalDepthBias(2.0f, 1.0f);
                 context.cmd.SetViewProjectionMatrices(
                     camera.worldToCameraMatrix,
                     camera.projectionMatrix
@@ -195,6 +192,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         );
 
         // Set Global Textures for testing.
+
         Shader.SetGlobalMatrix("_StainedShadowVPMatrix", lightProjectionMatrix * lightViewMatrix);
         glassData.lightColorTextureHandle = shadowColorTexture;
         glassData.lightDepthTextureHandle = shadowDepthTexture;
@@ -242,7 +240,10 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         min.z -= 1.0f;
 
         // Create the Ortho Project Matrix from the AABB
-        lightProjectionMatrix = Matrix4x4.Ortho(min.x, max.x, min.y, max.y, min.z, max.z);
+        lightProjectionMatrix = GL.GetGPUProjectionMatrix(
+            Matrix4x4.Ortho(min.x, max.x, min.y, max.y, min.z, max.z),
+            false
+        );
     }
 
     /// <summary>

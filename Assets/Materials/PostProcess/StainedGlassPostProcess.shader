@@ -39,7 +39,7 @@ Shader "Unlit/BasicUnlit"
 
             float4 frag (v2f i) : SV_Target
             {
-                float outlineTest = SCREEN_OUTLINE_TEST(i.vertex);
+                float outlineTest = SCREEN_OUTLINE_TEST_OBJ(i.vertex);
                 //return float4(outlineTest,0,0,1);
                 return lerp(_EdgeColor, float4(1,0,0,1), outlineTest);
             }

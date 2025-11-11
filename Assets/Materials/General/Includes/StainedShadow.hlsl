@@ -9,37 +9,42 @@ TEXTURE2D(_StainedShadowDepthMap);
 SAMPLER(sampler_StainedShadowDepthMap);
 
 float4x4 _StainedShadowVPMatrix;
-//float4 _ZBufferParams;
 
-float LinearEyeDepth(float rawDepth) {
-    return rawDepth / _ZBufferParams.z + _ZBufferParams.w;
+float3 GetLightSpaceUV(float3 worldPos) {
+    float4 clipPos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
+    float3 uv = (clipPos.xyz / clipPos.w) * 0.5 + 0.5;
+
+    #if UNITY_UV_STARTS_AT_TOP
+        uv.y = 1.0 - uv.y;
+    #endif
+
+    return uv;
 }
 
 // Sample for the shadow color.
 float4 SampleStainedShadowColor(float3 worldPos)
 {
-    float4 lightSpacePos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
-    float2 uv = lightSpacePos.xy / lightSpacePos.w * 0.5 + 0.5;
+    float3 uv = GetLightSpaceUV(worldPos);
 
-    // Optionally clamp to 0..1
-    uv = saturate(uv);
+    // Outside light frustum → no contribution
+    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
+        return 0.0;
 
-    //return float4(uv,0,1);
-    return SAMPLE_TEXTURE2D(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv);
+    return SAMPLE_TEXTURE2D(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy);
+    //return float4(uv.xy, 0.0, 1.0);
 }
 
 // Sample the light space depth map.
 float SampleStainedShadowDepth(float3 worldPos)
 {
-    float4 lightSpacePos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
-    float2 uv = lightSpacePos.xy / lightSpacePos.w * 0.5 + 0.5;
+    float3 uv = GetLightSpaceUV(worldPos);
 
-    uv = saturate(uv);
+    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
+        return 1.0;
 
-    return SAMPLE_TEXTURE2D(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv).r;
+    return SAMPLE_TEXTURE2D(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv.xy).r;
 }
 
 float GetLightSpaceDepth(float3 worldPos) {
-    float4 lightSpacePos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
-    return lightSpacePos.z / lightSpacePos.w * 0.5 + 0.5;
+    return 1.0 - mul(_StainedShadowVPMatrix, float4(worldPos, 1.0)).z;
 }

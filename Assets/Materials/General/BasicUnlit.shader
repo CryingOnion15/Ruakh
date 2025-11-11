@@ -9,7 +9,9 @@ Shader "Unlit/BasicUnlit"
     {
         Tags { "RenderType"="Opaque" "LightMode"="UniversalForward" }
         LOD 100
-
+        ZWrite On
+        ZTest LEqual
+        
         Pass
         {
             HLSLPROGRAM

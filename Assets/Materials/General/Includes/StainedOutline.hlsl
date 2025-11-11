@@ -12,12 +12,17 @@ SAMPLER(sampler_ScreenSpaceOutlineTexture);
 // Global screen parames set by unity. x = ScreenWidth, y = ScreenHeight
 //float2 _ScreenParams;
 
-float SCREEN_OUTLINE_TEST(float4 pos) {
+float SCREEN_OUTLINE_TEST_OBJ(float4 pos) {
     float2 uv = pos.xy / _ScreenParams.xy;
-#if UNITY_UV_STARTS_AT_TOP
-    uv.y = 1.0 - uv.y;
-#endif
+    #if UNITY_UV_STARTS_AT_TOP
+        uv.y = 1.0 - uv.y;
+    #endif
 
-    float4 ScreenTest = SAMPLE_TEXTURE2D(_ScreenSpaceOutlineTexture, sampler_ScreenSpaceOutlineTexture, float2(.5,.5));
+    float4 ScreenTest = SAMPLE_TEXTURE2D(_ScreenSpaceOutlineTexture, sampler_ScreenSpaceOutlineTexture, uv);
+    return ScreenTest.r;
+}
+
+float SCREEN_POS_OUTLINE_TEST(float2 uv) {
+    float4 ScreenTest = SAMPLE_TEXTURE2D(_ScreenSpaceOutlineTexture, sampler_ScreenSpaceOutlineTexture, uv);
     return ScreenTest.r;
 }
