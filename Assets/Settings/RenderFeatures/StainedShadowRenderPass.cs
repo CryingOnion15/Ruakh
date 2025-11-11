@@ -90,7 +90,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             dimension = TextureDimension.Tex2D,
             name = "_StainedShadowDepthMap",
             clearBuffer = true,
-            clearColor = Color.white,
         };
     }
 
@@ -231,7 +230,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
 
         //Offset the bounding box to avoid clipping.
-        float margin = 0.5f;
+        float margin = 5.0f;
         min.x -= margin;
         min.y -= margin;
         max.x += margin;

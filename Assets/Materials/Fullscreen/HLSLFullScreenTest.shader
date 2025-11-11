@@ -8,7 +8,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
             Tags { "RenderType"="Opaque" "Queue"="Overlay" }
             ZWrite Off
             ZTest Always
-            //Blend SrcAlpha OneMinusSrcAlpha
+            Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -73,17 +73,19 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 float4 shadowColor = SampleStainedShadowColor(world);
                 float shadowDepth = SampleStainedShadowDepth(world);
                 float pixelLightDepth = GetLightSpaceDepth(world);
-                float shadowTest = step(pixelLightDepth + .015, shadowDepth);
+                float shadowTest = step(pixelLightDepth + .0015, shadowDepth);
 
                 // Override scene color with shadow color.
-                sceneColor = lerp(sceneColor, shadowColor, 1.0 - shadowTest);
+                //sceneColor = lerp(sceneColor, shadowColor, 1.0 - shadowTest);
 
                 // Enforce outline color and draw the rest.
-                return lerp(sceneColor, _OutlineColor, outlineTest);
+                //return lerp(sceneColor, _OutlineColor, outlineTest);
 
                 /************** DEBUG*******/
-                //return float4(shadowColor,1.0);
-                //return shadowColor;
+                //return float4(world,1.0);
+                return shadowColor;
+                //return float4(shadowDepth,0.0,0.0, 1.0);
+                //return lerp(float4(0.0,0.0,0.0,0.0), float4(1.0,1.0,1.0,1.0), shadowDepth);
             }
             ENDHLSL
         }
