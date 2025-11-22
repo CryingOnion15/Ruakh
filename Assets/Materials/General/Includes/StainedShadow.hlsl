@@ -12,13 +12,16 @@ float4x4 _StainedShadowVPMatrix;
 
 float3 GetLightSpaceUV(float3 worldPos) {
     float4 clipPos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
-    float3 uv = float3((clipPos.xy / clipPos.w) * 0.5 + 0.5, 1.0 - clipPos.z);
-
-    #if UNITY_UV_STARTS_AT_TOP
-        uv.y = 1.0 - uv.y;
-    #endif
+    float3 uv = float3((clipPos.xy / clipPos.w) * 0.5 + 0.5, clipPos.z / clipPos.w);
 
     return uv;
+}
+
+float4 TestValue(float3 world) {
+    float4 clip = mul(_StainedShadowVPMatrix, float4(world,1.0));
+    float3 NDC = clip.xyz / clip.w;
+    float2 uv = float2(NDC.x, 1.0 - NDC.y) * 0.5 + 0.5;
+    return float4(uv.xy,clip.z, 1.0);
 }
 
 // Sample for the shadow color.
@@ -29,8 +32,7 @@ float4 SampleStainedShadowColor(float3 worldPos)
     if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
         return 0.0;
 
-    //return SAMPLE_TEXTURE2D(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy);
-    return float4(uv.x,0.0, 0.0, 1.0);
+    return SAMPLE_TEXTURE2D(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy);
 }
 
 // Sample the light space depth map.
@@ -45,5 +47,10 @@ float SampleStainedShadowDepth(float3 worldPos)
 }
 
 float GetLightSpaceDepth(float3 worldPos) {
-    return GetLightSpaceUV(worldPos).z;
+    float3 uv = GetLightSpaceUV(worldPos);
+
+    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
+        return 1.0;
+
+    return uv.z;
 }

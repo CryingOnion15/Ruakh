@@ -8,7 +8,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
             Tags { "RenderType"="Opaque" "Queue"="Overlay" }
             ZWrite Off
             ZTest Always
-            Blend SrcAlpha OneMinusSrcAlpha
+            //Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -71,21 +71,29 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
                 float4 shadowColor = SampleStainedShadowColor(world);
+
+                // Compare shadow depth vs light-space depth
                 float shadowDepth = SampleStainedShadowDepth(world);
                 float pixelLightDepth = GetLightSpaceDepth(world);
-                float shadowTest = step(pixelLightDepth + .0015, shadowDepth);
+
+                // Shadow test: 1 = shadowed, 0 = lit
+                float shadowTest = step(pixelLightDepth + .08, shadowDepth);
 
                 // Override scene color with shadow color.
-                //sceneColor = lerp(sceneColor, shadowColor, 1.0 - shadowTest);
+                sceneColor = lerp(sceneColor, shadowColor, shadowTest);
 
                 // Enforce outline color and draw the rest.
-                //return lerp(sceneColor, _OutlineColor, outlineTest);
+                sceneColor = lerp(sceneColor, _OutlineColor, outlineTest);
 
                 /************** DEBUG*******/
                 //return float4(world,1.0);
-                return shadowColor;
-                //return float4(shadowDepth,0.0,0.0, 1.0);
-                //return lerp(float4(0.0,0.0,0.0,0.0), float4(1.0,1.0,1.0,1.0), shadowDepth);
+                //return shadowColor;
+                //return float4(shadowDepth, 0.0,0.0, 1.0);
+                //return TestValue(world);
+                return sceneColor;
+                //return lerp(sceneColor, float4(1.0,0.0,0.0,1.0), shadowTest);
+                //return float4(IN.uv.xy,0.0,1.0);
+                //return float(sceneColor, 1.0);
             }
             ENDHLSL
         }

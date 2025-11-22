@@ -1,3 +1,5 @@
+using System;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -15,7 +17,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     // Frustum corners variables. (To avoid per frame allocation.)
     protected Vector3[] corners = new Vector3[8];
-    protected Vector3[] cornersLightSpace = new Vector3[8];
+
+    //protected Vector3[] cornersLightSpace = new Vector3[8];
     protected Vector3[] tempCorners = new Vector3[4];
     protected Rect viewportRect = new Rect(0, 0, 1, 1);
 
@@ -86,7 +89,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         // Create the color desc.
         depthDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
         {
-            colorFormat = GraphicsFormat.D32_SFloat,
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
             dimension = TextureDimension.Tex2D,
             name = "_StainedShadowDepthMap",
             clearBuffer = true,
@@ -115,10 +119,11 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         TextureHandle shadowDepthTexture = renderGraph.CreateTexture(depthDesc);
 
         // Update Light Data for renderings shadows.
-        UpdateLightData(camera);
+        UpdateFrustumCorners(camera, corners);
+        UpdateLightData();
 
         // Create Drawing Settings
-        SortingCriteria sortFlags = SortingCriteria.CommonOpaque;
+        SortingCriteria sortFlags = SortingCriteria.RenderQueue;
         RenderQueueRange queueRange = RenderQueueRange.opaque;
         FilteringSettings filterSettings = new FilteringSettings(queueRange, drawMask);
         DrawingSettings drawSettings = RenderingUtils.CreateDrawingSettings(
@@ -150,7 +155,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         builder.SetRenderAttachment(shadowColorTexture, 0);
         builder.SetRenderAttachment(shadowNormalTexture, 1);
         builder.SetRenderAttachment(shadowLumTexture, 2);
-        builder.SetRenderAttachmentDepth(shadowDepthTexture, AccessFlags.Write);
+        builder.SetRenderAttachment(shadowDepthTexture, 3);
         builder.UseRendererList(renderList);
         builder.SetGlobalTextureAfterPass(
             shadowColorTexture,
@@ -199,14 +204,12 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         glassData.lightLumTextureHandle = shadowLumTexture;
     }
 
-    protected void UpdateLightData(Camera camera)
+    protected void UpdateLightData()
     {
-        UpdateFrustumCorners(camera);
+        Vector3 right = dirLight.transform.right;
+        Vector3 up = dirLight.transform.up;
+        Vector3 forward = -dirLight.transform.forward;
 
-        lightDirection = dirLight.transform.forward;
-        Quaternion lightRotation = Quaternion.LookRotation(-lightDirection, Vector3.up);
-
-        // Get the center of the bounds.
         Vector3 center = Vector3.zero;
         for (int i = 0; i < corners.Length; i++)
         {
@@ -214,34 +217,40 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
         center /= corners.Length;
 
-        // Create the light view matrix at the center, rotated in the lights direction, scale of one.
-        lightViewMatrix = Matrix4x4.TRS(center, lightRotation, Vector3.one).inverse;
+        Vector3 lightPos = center + forward * 200;
 
-        //Transform the corners(World) to View Matrix coordinates and find the min and max.
-        cornersLightSpace[0] = lightViewMatrix.MultiplyPoint3x4(corners[0]);
-        Vector3 min = cornersLightSpace[0];
-        Vector3 max = cornersLightSpace[0];
+        // Build matrix manually
+        Matrix4x4 view = new Matrix4x4();
+        view.SetRow(0, new Vector4(right.x, right.y, right.z, -Vector3.Dot(right, lightPos)));
+        view.SetRow(1, new Vector4(up.x, up.y, up.z, -Vector3.Dot(up, lightPos)));
+        view.SetRow(
+            2,
+            new Vector4(forward.x, forward.y, forward.z, -Vector3.Dot(forward, lightPos))
+        );
+        view.SetRow(3, new Vector4(0, 0, 0, 1));
 
-        for (int i = 1; i < corners.Length; i++)
+        lightViewMatrix = view;
+
+        float l = float.PositiveInfinity;
+        float r = float.NegativeInfinity;
+        float b = float.PositiveInfinity;
+        float t = float.NegativeInfinity;
+
+        float factor = 1;
+
+        for (int i = 0; i < corners.Length; i++)
         {
-            cornersLightSpace[i] = lightViewMatrix.MultiplyPoint3x4(corners[i]);
-            min = Vector3.Min(min, cornersLightSpace[i]);
-            max = Vector3.Max(max, cornersLightSpace[i]);
+            Vector3 viewSpace = lightViewMatrix.MultiplyPoint3x4(corners[i]);
+            t = math.max(t, viewSpace.y * factor);
+            b = math.min(b, viewSpace.y * factor);
+            l = math.min(l, viewSpace.x * factor);
+            r = math.max(r, viewSpace.x * factor);
         }
-
-        //Offset the bounding box to avoid clipping.
-        float margin = 5.0f;
-        min.x -= margin;
-        min.y -= margin;
-        max.x += margin;
-        max.y += margin;
-        max.z += 1.0f;
-        min.z -= 1.0f;
 
         // Create the Ortho Project Matrix from the AABB
         lightProjectionMatrix = GL.GetGPUProjectionMatrix(
-            Matrix4x4.Ortho(min.x, max.x, min.y, max.y, min.z, max.z),
-            false
+            Matrix4x4.Ortho(l, r, t, b, 0.1f, 1000f),
+            true
         );
     }
 
@@ -250,7 +259,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     /// [0-3] = near corners, [4-7] = far corners.
     /// </summary>
     /// <param name="camera">Camera of the current frame.</param>
-    protected void UpdateFrustumCorners(Camera camera)
+    protected void UpdateFrustumCorners(Camera camera, Vector3[] corners)
     {
         var camToWorld = camera.transform.localToWorldMatrix;
 

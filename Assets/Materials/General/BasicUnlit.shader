@@ -8,7 +8,6 @@ Shader "Unlit/BasicUnlit"
     SubShader
     {
         Tags { "RenderType"="Opaque" "LightMode"="UniversalForward" }
-        LOD 100
         ZWrite On
         ZTest LEqual
         
@@ -25,6 +24,8 @@ Shader "Unlit/BasicUnlit"
             SAMPLER(sampler_BaseMap);
             float4 _BaseColor;
 
+            float4x4 _StainedShadowVPMatrix;
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -37,6 +38,7 @@ Shader "Unlit/BasicUnlit"
                 float4 vertex : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
+                float4 shadowSpace : TEXCOORD2;
             };
 
             v2f vert (appdata v)
@@ -44,6 +46,7 @@ Shader "Unlit/BasicUnlit"
                 v2f o;
                 o.vertex = TransformObjectToHClip(v.vertex);
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
+                o.shadowSpace = mul(_StainedShadowVPMatrix, float4(TransformObjectToWorld(v.vertex), 1.0));
                 o.uv = v.uv;
                 return o;
             }
@@ -55,9 +58,10 @@ Shader "Unlit/BasicUnlit"
                 float4 color  : SV_Target0;
                 float3 normal   : SV_Target1;
                 float lum : SV_Target2;
+                float depth : SV_Target3;
             };
 
-            FragmentOutput frag (v2f i) : SV_Target
+            FragmentOutput frag (v2f i)
             {
                 FragmentOutput OUT;
 
@@ -68,6 +72,8 @@ Shader "Unlit/BasicUnlit"
                 OUT.normal = normalVS * 0.5 + 0.5;
 
                 OUT.lum = OUT.color.r * 0.3 + OUT.color.g * 0.59 + OUT.color.b * 0.11;
+
+                OUT.depth = i.shadowSpace.z / i.shadowSpace.w * 0.5 + 0.5;
 
                 return OUT;
             }

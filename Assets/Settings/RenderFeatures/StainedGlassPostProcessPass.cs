@@ -32,7 +32,7 @@ public class StainedGlassPostProcessPass : ScriptableRenderPass
         using var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var data);
 
         // Set the builder settings and set the render functions.
-        builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
+        builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
         builder.AllowGlobalStateModification(true);
         builder.AllowPassCulling(false);
         builder.SetRenderFunc(
