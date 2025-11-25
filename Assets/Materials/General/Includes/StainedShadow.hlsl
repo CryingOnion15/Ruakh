@@ -18,10 +18,15 @@ float3 GetLightSpaceUV(float3 worldPos) {
 }
 
 float4 TestValue(float3 world) {
-    float4 clip = mul(_StainedShadowVPMatrix, float4(world,1.0));
+    float4 clip = mul(_StainedShadowVPMatrix, float4(world, 1.0));
     float3 NDC = clip.xyz / clip.w;
-    float2 uv = float2(NDC.x, 1.0 - NDC.y) * 0.5 + 0.5;
-    return float4(uv.xy,clip.z, 1.0);
+    float3 uv = NDC * 0.5 + 0.5;
+
+    if (any(NDC < -1.0) || any(NDC > 1.0)) {
+        return 0.0;
+    }
+
+    return float4(uv.xy, 0.0, 1.0);
 }
 
 // Sample for the shadow color.

@@ -20,7 +20,7 @@ MonoBehaviour:
     m_Bits: 1
   dataOverrideMaterial: {fileID: 2100000, guid: ac1d8120c6f27ca459ef8b29c4af87ca, type: 2}
   outlineBlitMaterial: {fileID: 2100000, guid: 4088feeeea6ea8f4bb9f91a5d905be39, type: 2}
-  shadowDataOverrideMaterial: {fileID: 2100000, guid: 9fdb2d51dcf0c4342bd960593f56e385, type: 2}
+  shadowDataOverrideMaterial: {fileID: 2100000, guid: f80923eea404b00419849502b2cdf0c7, type: 2}
   shadowOutlineBlitMaterial: {fileID: 2100000, guid: e48ce97ae96af254599f8e1e4808825e, type: 2}
   outlineSettings:
     edgeThickness: 1

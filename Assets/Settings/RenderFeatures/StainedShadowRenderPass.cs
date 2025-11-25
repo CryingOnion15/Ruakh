@@ -1,6 +1,8 @@
 using System;
+using System.Linq.Expressions;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -10,7 +12,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 {
     protected Light dirLight;
     protected LayerMask drawMask;
-    protected Material dataOverrideMaterial;
+    protected Material overrideMaterial;
     protected int ShadowMapResolution = 1024;
 
     protected readonly ShaderTagId shaderTag = new ShaderTagId("UniversalForward");
@@ -33,6 +35,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     protected TextureDesc lumDesc;
     protected TextureDesc normalDesc;
     protected TextureDesc depthDesc;
+    protected TextureDesc depthBufferDesc;
 
     class PassData
     {
@@ -50,7 +53,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     {
         dirLight = light;
         drawMask = mask;
-        dataOverrideMaterial = dataOverrideMat;
+        overrideMaterial = dataOverrideMat;
         ShadowMapResolution = mapResolution;
         requiresIntermediateTexture = true;
 
@@ -95,6 +98,16 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             name = "_StainedShadowDepthMap",
             clearBuffer = true,
         };
+
+        // Create the color desc.
+        depthBufferDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
+        {
+            colorFormat = GraphicsFormat.None,
+            depthBufferBits = DepthBits.Depth24,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowDepthBuffer",
+            clearBuffer = true,
+        };
     }
 
     // Override to define the render pass instructions.
@@ -117,13 +130,14 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         TextureHandle shadowLumTexture = renderGraph.CreateTexture(lumDesc);
         TextureHandle shadowNormalTexture = renderGraph.CreateTexture(normalDesc);
         TextureHandle shadowDepthTexture = renderGraph.CreateTexture(depthDesc);
+        TextureHandle shadowDepthBufferTex = renderGraph.CreateTexture(depthBufferDesc);
 
         // Update Light Data for renderings shadows.
         UpdateFrustumCorners(camera, corners);
         UpdateLightData();
 
         // Create Drawing Settings
-        SortingCriteria sortFlags = SortingCriteria.RenderQueue;
+        SortingCriteria sortFlags = SortingCriteria.CommonOpaque;
         RenderQueueRange queueRange = RenderQueueRange.opaque;
         FilteringSettings filterSettings = new FilteringSettings(queueRange, drawMask);
         DrawingSettings drawSettings = RenderingUtils.CreateDrawingSettings(
@@ -156,6 +170,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         builder.SetRenderAttachment(shadowNormalTexture, 1);
         builder.SetRenderAttachment(shadowLumTexture, 2);
         builder.SetRenderAttachment(shadowDepthTexture, 3);
+        builder.SetRenderAttachmentDepth(shadowDepthBufferTex, AccessFlags.Write);
         builder.UseRendererList(renderList);
         builder.SetGlobalTextureAfterPass(
             shadowColorTexture,
@@ -217,7 +232,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
         center /= corners.Length;
 
-        Vector3 lightPos = center + forward * 200;
+        Vector3 lightPos = center + forward * 25;
 
         // Build matrix manually
         Matrix4x4 view = new Matrix4x4();
@@ -235,6 +250,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         float r = float.NegativeInfinity;
         float b = float.PositiveInfinity;
         float t = float.NegativeInfinity;
+        float far = float.NegativeInfinity;
+        float near = float.PositiveInfinity;
 
         float factor = 1;
 
@@ -245,11 +262,13 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             b = math.min(b, viewSpace.y * factor);
             l = math.min(l, viewSpace.x * factor);
             r = math.max(r, viewSpace.x * factor);
+            far = math.max(far, viewSpace.z);
+            near = math.min(near, viewSpace.z);
         }
 
         // Create the Ortho Project Matrix from the AABB
         lightProjectionMatrix = GL.GetGPUProjectionMatrix(
-            Matrix4x4.Ortho(l, r, t, b, 0.1f, 1000f),
+            Matrix4x4.Ortho(l, r, b, t, near, far),
             true
         );
     }

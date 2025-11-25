@@ -76,8 +76,11 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 float shadowDepth = SampleStainedShadowDepth(world);
                 float pixelLightDepth = GetLightSpaceDepth(world);
 
-                // Shadow test: 1 = shadowed, 0 = lit
-                float shadowTest = step(pixelLightDepth + .08, shadowDepth);
+                // Exclude skybox pixels
+                float outOfBounds = 1.0 - step(depth, 0.0001);
+
+                // Shadow test: 1 = shadowed, 0 = lit (Large bias due to tight ortho)
+                float shadowTest = step(pixelLightDepth + .1, shadowDepth) * outOfBounds;
 
                 // Override scene color with shadow color.
                 sceneColor = lerp(sceneColor, shadowColor, shadowTest);
@@ -85,15 +88,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, outlineTest);
 
-                /************** DEBUG*******/
-                //return float4(world,1.0);
-                //return shadowColor;
-                //return float4(shadowDepth, 0.0,0.0, 1.0);
-                //return TestValue(world);
                 return sceneColor;
-                //return lerp(sceneColor, float4(1.0,0.0,0.0,1.0), shadowTest);
-                //return float4(IN.uv.xy,0.0,1.0);
-                //return float(sceneColor, 1.0);
             }
             ENDHLSL
         }

@@ -1,10 +1,5 @@
-Shader "Unlit/BasicUnlit"
+Shader "Unlit/BasicUnlitShadowOverride"
 {
-    Properties
-    {
-        _BaseColor ("BaseColor", Color) = (1,1,1,1)
-        _BaseMap ("BaseMap", 2D) = "white" {}
-    }
     SubShader
     {
         Tags { "RenderType"="Opaque" "LightMode"="UniversalForward" }
@@ -17,12 +12,11 @@ Shader "Unlit/BasicUnlit"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-
-            //#include "UnityCG.cginc"
             #include "Assets/Materials/General/Includes/StainedOutline.hlsl"
 
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+
             float4 _BaseColor;
 
             float4x4 _StainedShadowVPMatrix;
@@ -60,7 +54,7 @@ Shader "Unlit/BasicUnlit"
                 float3 normal   : SV_Target1;
                 float lum : SV_Target2;
                 float depth : SV_Target3;
-                //float test : SV_Depth;
+                float rawDepth : SV_Depth;
             };
 
             FragmentOutput frag (v2f i)
@@ -77,8 +71,9 @@ Shader "Unlit/BasicUnlit"
 
                 float rawDepth = i.shadowSpace.z / i.shadowSpace.w;
 
+                OUT.rawDepth = rawDepth;
+
                 OUT.depth = rawDepth * 0.5 + 0.5;
-                //OUT.test = rawDepth;
 
                 return OUT;
             }
