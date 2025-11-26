@@ -66,9 +66,6 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 // Get the scene color.
                 float4 sceneColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
 
-                // Get whether or not an outline should be drawn here.
-                float outlineTest = SCREEN_POS_OUTLINE_TEST(IN.uv);
-
                 float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
                 float4 shadowColor = SampleStainedShadowColor(world);
 
@@ -79,14 +76,19 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 // Exclude skybox pixels
                 float outOfBounds = 1.0 - step(depth, 0.0001);
 
-                // Shadow test: 1 = shadowed, 0 = lit (Large bias due to tight ortho)
-                float shadowTest = step(pixelLightDepth + .1, shadowDepth) * outOfBounds;
+                // Outline Tests
+                float screenOutlineTest = SCREEN_POS_OUTLINE_TEST(IN.uv);
+                //float shadowOutlineTest = 1.0 - LIGHT_SPACE_OUTLINE_TEST(world);
+
+                // Shadow test: 1 = shadowed, 0 = lit
+                // Add * shadowOutlineTest back in when texture is bigger & details can be there.
+                float shadowTest = step(pixelLightDepth, shadowDepth) * outOfBounds;
 
                 // Override scene color with shadow color.
                 sceneColor = lerp(sceneColor, shadowColor, shadowTest);
 
                 // Enforce outline color and draw the rest.
-                sceneColor = lerp(sceneColor, _OutlineColor, outlineTest);
+                sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
 
                 return sceneColor;
             }

@@ -19,8 +19,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     // Frustum corners variables. (To avoid per frame allocation.)
     protected Vector3[] corners = new Vector3[8];
-
-    //protected Vector3[] cornersLightSpace = new Vector3[8];
     protected Vector3[] tempCorners = new Vector3[4];
     protected Rect viewportRect = new Rect(0, 0, 1, 1);
 
@@ -56,58 +54,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         overrideMaterial = dataOverrideMat;
         ShadowMapResolution = mapResolution;
         requiresIntermediateTexture = true;
-
-        // Create the color desc.
-        colorDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2D,
-            name = "_StainedShadowColorMap",
-            clearBuffer = true,
-            clearColor = Color.clear,
-        };
-
-        lumDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2D,
-            name = "_StainedShadowLumMap",
-            clearBuffer = true,
-            clearColor = Color.clear,
-        };
-
-        // Create the color desc.
-        normalDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2D,
-            name = "_StainedShadowNormalMap",
-            clearBuffer = true,
-            clearColor = Color.clear,
-        };
-
-        // Create the color desc.
-        depthDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2D,
-            name = "_StainedShadowDepthMap",
-            clearBuffer = true,
-        };
-
-        // Create the color desc.
-        depthBufferDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.None,
-            depthBufferBits = DepthBits.Depth24,
-            dimension = TextureDimension.Tex2D,
-            name = "_StainedShadowDepthBuffer",
-            clearBuffer = true,
-        };
     }
 
     // Override to define the render pass instructions.
@@ -122,6 +68,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         UniversalLightData lightData = frameData.Get<UniversalLightData>();
         StainedGlassData glassData = frameData.Get<StainedGlassData>();
         Camera camera = cameraData.camera;
+
+        InitializeTextureDesc(camera);
 
         // Create the render pass.
         using var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var data);
@@ -232,7 +180,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
         center /= corners.Length;
 
-        Vector3 lightPos = center + forward * 25;
+        Vector3 lightPos = center + forward * 5;
 
         // Build matrix manually
         Matrix4x4 view = new Matrix4x4();
@@ -250,8 +198,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         float r = float.NegativeInfinity;
         float b = float.PositiveInfinity;
         float t = float.NegativeInfinity;
-        float far = float.NegativeInfinity;
-        float near = float.PositiveInfinity;
+        float far = float.PositiveInfinity;
+        float near = float.NegativeInfinity;
 
         float factor = 1;
 
@@ -262,8 +210,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             b = math.min(b, viewSpace.y * factor);
             l = math.min(l, viewSpace.x * factor);
             r = math.max(r, viewSpace.x * factor);
-            far = math.max(far, viewSpace.z);
-            near = math.min(near, viewSpace.z);
+            far = math.min(far, viewSpace.z);
+            near = math.max(near, viewSpace.z);
         }
 
         // Create the Ortho Project Matrix from the AABB
@@ -301,5 +249,60 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         );
         for (int i = 0; i < tempCorners.Length; i++)
             corners[i + 4] = camToWorld.MultiplyPoint3x4(tempCorners[i]);
+    }
+
+    protected void InitializeTextureDesc(Camera camera)
+    {
+        // Create the color desc.
+        colorDesc = new TextureDesc(camera.scaledPixelWidth, camera.scaledPixelHeight)
+        {
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowColorMap",
+            clearBuffer = true,
+            clearColor = Color.clear,
+        };
+
+        lumDesc = new TextureDesc(camera.scaledPixelWidth, camera.scaledPixelHeight)
+        {
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowLumMap",
+            clearBuffer = true,
+            clearColor = Color.clear,
+        };
+
+        // Create the color desc.
+        normalDesc = new TextureDesc(camera.scaledPixelWidth, camera.scaledPixelHeight)
+        {
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowNormalMap",
+            clearBuffer = true,
+            clearColor = Color.clear,
+        };
+
+        // Create the color desc.
+        depthDesc = new TextureDesc(camera.scaledPixelWidth, camera.scaledPixelHeight)
+        {
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowDepthMap",
+            clearBuffer = true,
+        };
+
+        // Create the color desc.
+        depthBufferDesc = new TextureDesc(camera.scaledPixelWidth, camera.scaledPixelHeight)
+        {
+            colorFormat = GraphicsFormat.None,
+            depthBufferBits = DepthBits.Depth24,
+            dimension = TextureDimension.Tex2D,
+            name = "_StainedShadowDepthBuffer",
+            clearBuffer = true,
+        };
     }
 }
