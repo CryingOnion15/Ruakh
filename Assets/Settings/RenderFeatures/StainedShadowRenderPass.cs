@@ -160,6 +160,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
         // Set Global Textures for testing.
 
+        Shader.SetGlobalMatrix("_StainedShadowViewMatrix", lightViewMatrix);
+        Shader.SetGlobalMatrix("_StainedShadowProjMatrix", lightProjectionMatrix);
         Shader.SetGlobalMatrix("_StainedShadowVPMatrix", lightProjectionMatrix * lightViewMatrix);
         glassData.lightColorTextureHandle = shadowColorTexture;
         glassData.lightDepthTextureHandle = shadowDepthTexture;
@@ -169,9 +171,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     protected void UpdateLightData()
     {
-        Vector3 right = dirLight.transform.right;
-        Vector3 up = dirLight.transform.up;
-        Vector3 forward = -dirLight.transform.forward;
+        // Light Direction;
+        Vector3 lightDirection = dirLight.transform.forward;
 
         Vector3 center = Vector3.zero;
         for (int i = 0; i < corners.Length; i++)
@@ -180,17 +181,11 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
         center /= corners.Length;
 
-        Vector3 lightPos = center + forward * 5;
+        Vector3 lightPos = center - lightDirection * 5;
 
         // Build matrix manually
-        Matrix4x4 view = new Matrix4x4();
-        view.SetRow(0, new Vector4(right.x, right.y, right.z, -Vector3.Dot(right, lightPos)));
-        view.SetRow(1, new Vector4(up.x, up.y, up.z, -Vector3.Dot(up, lightPos)));
-        view.SetRow(
-            2,
-            new Vector4(forward.x, forward.y, forward.z, -Vector3.Dot(forward, lightPos))
-        );
-        view.SetRow(3, new Vector4(0, 0, 0, 1));
+        Quaternion lightRot = Quaternion.LookRotation(lightDirection, dirLight.transform.up);
+        Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
 
         lightViewMatrix = view;
 
@@ -198,8 +193,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         float r = float.NegativeInfinity;
         float b = float.PositiveInfinity;
         float t = float.NegativeInfinity;
-        float far = float.PositiveInfinity;
-        float near = float.NegativeInfinity;
+        float far = float.NegativeInfinity;
+        float near = float.PositiveInfinity;
 
         float factor = 1;
 
@@ -210,8 +205,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             b = math.min(b, viewSpace.y * factor);
             l = math.min(l, viewSpace.x * factor);
             r = math.max(r, viewSpace.x * factor);
-            far = math.min(far, viewSpace.z);
-            near = math.max(near, viewSpace.z);
+            far = math.max(far, viewSpace.z);
+            near = math.min(near, viewSpace.z);
         }
 
         // Create the Ortho Project Matrix from the AABB
@@ -219,6 +214,9 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Matrix4x4.Ortho(l, r, b, t, near, far),
             true
         );
+
+        Shader.SetGlobalFloat("_ShadowNear", near);
+        Shader.SetGlobalFloat("_ShadowFar", far);
     }
 
     /// <summary>

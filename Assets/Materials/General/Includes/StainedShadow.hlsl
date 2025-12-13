@@ -11,7 +11,11 @@ SAMPLER(sampler_StainedShadowDepthMap);
 TEXTURE2D(_LightSpaceOutlineTexture);
 SAMPLER(sampler_LightSpaceOutlineTexture);
 
+// Global Variables
 float4x4 _StainedShadowVPMatrix;
+float4x4 _StainedShadowViewMatrix;
+float _ShadowNear;
+float _ShadowFar;
 
 float3 GetLightSpaceUV(float3 worldPos) {
     float4 clipPos = mul(_StainedShadowVPMatrix, float4(worldPos, 1.0));
@@ -43,12 +47,10 @@ float SampleStainedShadowDepth(float3 worldPos)
 }
 
 float GetLightSpaceDepth(float3 worldPos) {
-    float3 uv = GetLightSpaceUV(worldPos);
-
-    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
-        return 1.0;
-
-    return uv.z;
+    float4 lightViewPos = mul(_StainedShadowViewMatrix, float4(worldPos, 1.0));
+    float lightViewDepth = lightViewPos.z;
+    
+    return saturate((lightViewDepth - _ShadowNear) / (_ShadowFar - _ShadowNear));
 }
 
 float LIGHT_SPACE_OUTLINE_TEST(float3 worldPos) {

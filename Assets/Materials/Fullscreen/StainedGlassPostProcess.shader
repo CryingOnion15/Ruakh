@@ -8,6 +8,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
             Tags { "RenderType"="Opaque" "Queue"="Overlay" }
             ZWrite Off
             ZTest Always
+            Cull Off
             //Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
@@ -56,25 +57,22 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 #endif
 
                 // Get the depth at the pixel.
-                #if UNITY_REVERSED_Z
-                    real depth = SampleSceneDepth(IN.uv);
-                #else
-                    // Adjust Z to match NDC for OpenGL ([-1, 1])
-                    real depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(IN.uv));
-                #endif
+                float depth = SampleSceneDepth(IN.uv);
+                float linearDepth = Linear01Depth(depth, _ZBufferParams);
 
                 // Get the scene color.
                 float4 sceneColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
-
+            
                 float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
                 float4 shadowColor = SampleStainedShadowColor(world);
-
+                
                 // Compare shadow depth vs light-space depth
                 float shadowDepth = SampleStainedShadowDepth(world);
                 float pixelLightDepth = GetLightSpaceDepth(world);
 
                 // Exclude skybox pixels
-                float outOfBounds = 1.0 - step(depth, 0.0001);
+                float isValidReciever = 1.0 - step(.999, linearDepth);
+                float isVisible = length(shadowColor.rgb) > .001 ? 1.0 : 0.0;
 
                 // Outline Tests
                 float screenOutlineTest = SCREEN_POS_OUTLINE_TEST(IN.uv);
@@ -82,23 +80,13 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Shadow test: 1 = shadowed, 0 = lit
                 // Add * shadowOutlineTest back in when texture is bigger & details can be there.
-                float shadowTest = step(pixelLightDepth, shadowDepth + .01) * outOfBounds;
-
-                //return float4(shadowDepth, 0.0, 0.0, 1.0);
-
-                if(pixelLightDepth > shadowDepth) {
-                    return float4(1.0, 0.0, 0.0, 1.0);
-                } else {
-                    return float4(0.0, 0.0, 0.0, 1.0);
-                }
-
+                float shadowTest = step(shadowDepth, pixelLightDepth) * isValidReciever * isVisible;
                 // Override scene color with shadow color.
                 sceneColor = lerp(sceneColor, shadowColor, shadowTest);
 
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
 
-                return float4(shadowTest, 0.0, 0.0, 1.0);
                 return sceneColor;
             }
             ENDHLSL

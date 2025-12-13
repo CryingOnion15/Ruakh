@@ -25,7 +25,11 @@ Shader "Unlit/BasicUnlit"
             SAMPLER(sampler_BaseMap);
             float4 _BaseColor;
 
+            // Global Variables
             float4x4 _StainedShadowVPMatrix;
+            float4x4 _StainedShadowViewMatrix;
+            float _ShadowNear;
+            float _ShadowFar;
 
             struct appdata
             {
@@ -40,6 +44,7 @@ Shader "Unlit/BasicUnlit"
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float4 shadowSpace : TEXCOORD2;
+                float4 posWS : TEXCOORD3;
             };
 
             v2f vert (appdata v)
@@ -48,11 +53,12 @@ Shader "Unlit/BasicUnlit"
                 o.vertex = TransformObjectToHClip(v.vertex);
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
                 o.shadowSpace = mul(_StainedShadowVPMatrix, float4(TransformObjectToWorld(v.vertex), 1.0));
+                o.posWS = float4(TransformObjectToWorld(v.vertex), 1.0);
                 o.uv = v.uv;
                 return o;
             }
 
-             // Struct to define our value at each pixel for our outline data.
+            // Struct to define our value at each pixel for our outline data.
             // Stained Glass Color Texture Pass use these value as the render targets.
             struct FragmentOutput
             {
@@ -75,10 +81,12 @@ Shader "Unlit/BasicUnlit"
 
                 OUT.lum = OUT.color.r * 0.3 + OUT.color.g * 0.59 + OUT.color.b * 0.11;
 
-                float rawDepth = i.shadowSpace.z / i.shadowSpace.w;
+                // Light-space view depth (before projection)
+                float4 lightViewPos = mul(_StainedShadowViewMatrix, i.posWS);
+                float lightViewDepth = lightViewPos.z;
 
-                OUT.depth = rawDepth * 0.5 + 0.5;
-                //OUT.test = rawDepth;
+                // Normalize manually using your light near/far
+                OUT.depth = saturate((lightViewDepth - _ShadowNear) / (_ShadowFar - _ShadowNear));
 
                 return OUT;
             }
