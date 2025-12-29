@@ -72,7 +72,6 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Exclude skybox pixels
                 float isValidReciever = 1.0 - step(.999, linearDepth);
-                float isVisible = length(shadowColor.rgb) > .001 ? 1.0 : 0.0;
 
                 // Outline Tests
                 float screenOutlineTest = SCREEN_POS_OUTLINE_TEST(IN.uv);
@@ -80,9 +79,11 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Shadow test: 1 = shadowed, 0 = lit
                 // Add * shadowOutlineTest back in when texture is bigger & details can be there.
-                float shadowTest = step(shadowDepth, pixelLightDepth) * isValidReciever * isVisible;
+                float shadowTest = step(shadowDepth, pixelLightDepth) * isValidReciever;
+                float shadowPCF = GetShadowPCF(world);
+
                 // Override scene color with shadow color.
-                sceneColor = lerp(sceneColor, shadowColor, shadowTest);
+                sceneColor = lerp(sceneColor, shadowColor, shadowTest * shadowPCF);
 
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);

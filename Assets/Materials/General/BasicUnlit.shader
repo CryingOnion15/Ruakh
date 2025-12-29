@@ -28,8 +28,7 @@ Shader "Unlit/BasicUnlit"
             // Global Variables
             float4x4 _StainedShadowVPMatrix;
             float4x4 _StainedShadowViewMatrix;
-            float _ShadowNear;
-            float _ShadowFar;
+            float4 _ShadowParams;
 
             struct appdata
             {
@@ -63,9 +62,9 @@ Shader "Unlit/BasicUnlit"
             struct FragmentOutput
             {
                 float4 color  : SV_Target0;
-                float3 normal   : SV_Target1;
-                float lum : SV_Target2;
-                float depth : SV_Target3;
+                float depth : SV_Target1;
+                float3 normal   : SV_Target2;
+                float lum : SV_Target3;
                 //float test : SV_Depth;
             };
 
@@ -86,7 +85,7 @@ Shader "Unlit/BasicUnlit"
                 float lightViewDepth = lightViewPos.z;
 
                 // Normalize manually using your light near/far
-                OUT.depth = saturate((lightViewDepth - _ShadowNear) / (_ShadowFar - _ShadowNear));
+                OUT.depth = saturate(lightViewDepth * _ShadowParams.z - _ShadowParams.w);
 
                 return OUT;
             }
