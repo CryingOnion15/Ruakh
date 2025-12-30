@@ -147,22 +147,59 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                     );
                 }
             );
-
-            // Set glass data.
-            //glassData.lightColorTextureHandle = shadowColorTexture;
-            //glassData.lightDepthTextureHandle = shadowDepthTexture;
         }
 
-        // Set Global Variables.
+        SetShaderVariables(cData);
+    }
+
+    protected void SetShaderVariables(CascadeData cData)
+    {
+        // --- Set Camera Params ---
+        // Build matrix manually
+        Quaternion lightRot = Quaternion.LookRotation(
+            dirLight.transform.forward,
+            dirLight.transform.up
+        );
+
+        // Find the depth range.
+        Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
+        float l = float.PositiveInfinity;
+        float r = float.NegativeInfinity;
+        float b = float.PositiveInfinity;
+        float t = float.NegativeInfinity;
+        float far = float.NegativeInfinity;
+        float near = float.PositiveInfinity;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 viewSpace = tempView.MultiplyPoint3x4(corners[i]);
+            t = math.max(t, viewSpace.y);
+            b = math.min(b, viewSpace.y);
+            l = math.min(l, viewSpace.x);
+            r = math.max(r, viewSpace.x);
+            far = math.max(far, viewSpace.z);
+            near = math.min(near, viewSpace.z);
+        }
+
+        // Set Global Shader Params Vector.
+        // x = near, y = far, z = 1 / Far - Near, w = near / far - near
+        Shader.SetGlobalVector(
+            "_ShadowParams",
+            new Vector4(near, far, 1 / (far - near), near / (far - near))
+        );
+
+        // -- Set Matrices --
         Shader.SetGlobalMatrixArray("_StainedShadowViewMatrix", cData.cascadeViewMatricies);
         Shader.SetGlobalMatrixArray("_StainedShadowProjMatrix", cData.cascadeProjMatricies);
         Shader.SetGlobalMatrixArray("_StainedShadowVPMatrix", cData.cascadeViewProjMatricies);
 
-        // Texel size (same value because the texture is square.)
+        // -- Set Other Values --
         Shader.SetGlobalVector(
             "_ShadowTexelSize",
             new Vector2(1 / ShadowMapResolution, 1 / ShadowMapResolution)
         );
+
+        Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.CascadeBounds);
     }
 
     protected void UpdateLightDataForCascade(CascadeData cData, int cascadeIndex)
@@ -217,10 +254,10 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
         // Set Global Shader Params Vector.
         // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-        // Shader.SetGlobalVector(
-        //     "_ShadowParams",
-        //     new Vector4(near, far, 1 / (far - near), near / (far - near))
-        // );
+        Shader.SetGlobalVector(
+            "_ShadowParams",
+            new Vector4(near, far, 1 / (far - near), near / (far - near))
+        );
     }
 
     /// <summary>

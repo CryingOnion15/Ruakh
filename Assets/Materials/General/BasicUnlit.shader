@@ -20,15 +20,19 @@ Shader "Unlit/BasicUnlit"
 
             //#include "UnityCG.cginc"
             #include "Assets/Materials/General/Includes/StainedOutline.hlsl"
+            #include "Assets/Materials/General/Includes/StainedShadow.hlsl"
 
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
             float4 _BaseColor;
 
             // Global Variables
-            float4x4 _StainedShadowVPMatrix;
-            float4x4 _StainedShadowViewMatrix;
-            float4 _ShadowParams;
+            //CBUFFER_START(StainedShadowMatrices)
+                //float4x4 _StainedShadowVPMatrix[4];
+                //float4x4 _StainedShadowViewMatrix[4];
+            //CBUFFER_END
+
+            //float4 _ShadowParams;
 
             struct appdata
             {
@@ -44,6 +48,7 @@ Shader "Unlit/BasicUnlit"
                 float3 normalWS : TEXCOORD1;
                 float4 shadowSpace : TEXCOORD2;
                 float4 posWS : TEXCOORD3;
+                uint casIndex : TEXCOORD4;
             };
 
             v2f vert (appdata v)
@@ -51,8 +56,9 @@ Shader "Unlit/BasicUnlit"
                 v2f o;
                 o.vertex = TransformObjectToHClip(v.vertex);
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
-                o.shadowSpace = mul(_StainedShadowVPMatrix, float4(TransformObjectToWorld(v.vertex), 1.0));
                 o.posWS = float4(TransformObjectToWorld(v.vertex), 1.0);
+                o.casIndex = GetCascadeIndex(float3(o.posWS.xyz));
+                o.shadowSpace = mul(_StainedShadowVPMatrix[o.casIndex], float4(TransformObjectToWorld(v.vertex), 1.0));
                 o.uv = v.uv;
                 return o;
             }
@@ -81,7 +87,7 @@ Shader "Unlit/BasicUnlit"
                 OUT.lum = OUT.color.r * 0.3 + OUT.color.g * 0.59 + OUT.color.b * 0.11;
 
                 // Light-space view depth (before projection)
-                float4 lightViewPos = mul(_StainedShadowViewMatrix, i.posWS);
+                float4 lightViewPos = mul(_StainedShadowViewMatrix[i.casIndex], i.posWS);
                 float lightViewDepth = lightViewPos.z;
 
                 // Normalize manually using your light near/far

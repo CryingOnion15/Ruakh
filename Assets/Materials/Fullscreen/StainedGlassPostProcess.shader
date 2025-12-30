@@ -87,7 +87,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
-
+            
                 return sceneColor;
             }
             ENDHLSL
