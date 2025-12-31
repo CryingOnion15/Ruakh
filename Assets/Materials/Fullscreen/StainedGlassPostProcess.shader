@@ -87,7 +87,20 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
-            
+
+                //Debug Cascades
+                uint cIndex = GetCascadeIndex(world);
+
+                // if(cIndex == 0) {
+                //     return float4(1.0,0.0,0.0,1.0);
+                // } else if(cIndex == 1) {
+                //     return float4(0.0,1.0,0.0,1.0);
+                // } else if(cIndex == 2) {
+                //     return float4(0.0,0.0,1.0,1.0);
+                // } else {
+                //     return float4(1.0,1.0,0.0,1.0);
+                // }
+
                 return sceneColor;
             }
             ENDHLSL

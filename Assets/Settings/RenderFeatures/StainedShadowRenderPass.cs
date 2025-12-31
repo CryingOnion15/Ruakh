@@ -1,4 +1,3 @@
-using System;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -8,22 +7,22 @@ using UnityEngine.Rendering.Universal;
 
 public class CascadeData
 {
-    public TextureHandle cascadeColorTexture;
-    public TextureHandle cascadeDepthTexture;
     public Vector3[][] cascadeCorners;
     public Matrix4x4[] cascadeViewMatricies;
     public Matrix4x4[] cascadeProjMatricies;
     public Matrix4x4[] cascadeViewProjMatricies;
+    public CullingResults[] cascadeCullData;
+    public int CascadeCount;
     public readonly float[] CascadeBounds = new float[] { 0f, .1f, .25f, .5f, 1f };
 
-    public CascadeData(RenderGraph rg, TextureDesc colorDesc, TextureDesc depthDesc, int cascades)
+    public CascadeData(int cascades)
     {
-        cascadeColorTexture = rg.CreateTexture(colorDesc);
-        cascadeDepthTexture = rg.CreateTexture(depthDesc);
         cascadeCorners = new Vector3[cascades][];
+        CascadeCount = cascades;
         cascadeViewMatricies = new Matrix4x4[cascades];
         cascadeProjMatricies = new Matrix4x4[cascades];
         cascadeViewProjMatricies = new Matrix4x4[cascades];
+        cascadeCullData = new CullingResults[cascades];
     }
 }
 
@@ -33,6 +32,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     protected LayerMask drawMask;
     protected Material overrideMaterial;
     protected int ShadowMapResolution = 1024;
+    protected TextureHandle cascadeColorTexture;
+    protected TextureHandle cascadeDepthTexture;
 
     protected readonly ShaderTagId shaderTag = new ShaderTagId("UniversalForward");
 
@@ -43,9 +44,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     // Light Matrices and Light Direction
     protected Vector3 lightDirection;
-
-    //protected Matrix4x4 lightViewMatrix;
-    //protected Matrix4x4 lightProjectionMatrix;
+    protected CascadeData cData;
 
     class PassData
     {
@@ -62,23 +61,24 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         overrideMaterial = dataOverrideMat;
         ShadowMapResolution = mapResolution;
         requiresIntermediateTexture = true;
+        cData = new CascadeData(4);
     }
 
     // Override to define the render pass instructions.
     public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
     {
-        CascadeData cData = InitializeCascadeTextures(renderGraph, 4);
+        InitializeCascadeTextures(renderGraph);
 
         // Get frame data.
         UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
         UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
         UniversalLightData lightData = frameData.Get<UniversalLightData>();
-        StainedGlassData glassData = frameData.Get<StainedGlassData>();
+        //StainedGlassData glassData = frameData.Get<StainedGlassData>();
         Camera camera = cameraData.camera;
 
-        // Update Light Data for renderings shadows.
-        UpdateFrustumCorners(camera, corners);
-        GenerateCascadeCorners(corners, cData);
+        UpdateFrustumCorners(Camera.main, corners);
+        GenerateCascadeCorners(Camera.main, cData);
+        UpdateLightDataForCascades(cData);
 
         for (int i = 0; i < 4; i++)
         {
@@ -87,8 +87,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // Create the render pass.
             using var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var data);
-
-            UpdateLightDataForCascade(cData, i);
 
             // Create Drawing Settings
             SortingCriteria sortFlags = SortingCriteria.CommonOpaque;
@@ -116,15 +114,15 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             data.projMat = cData.cascadeProjMatricies[i];
 
             // Set the builder settings and set the render functions.
-            builder.SetRenderAttachment(cData.cascadeColorTexture, 0, AccessFlags.ReadWrite, 0, i);
-            builder.SetRenderAttachment(cData.cascadeDepthTexture, 1, AccessFlags.ReadWrite, 0, i);
+            builder.SetRenderAttachment(cascadeColorTexture, 0, AccessFlags.ReadWrite, 0, i);
+            builder.SetRenderAttachment(cascadeDepthTexture, 1, AccessFlags.ReadWrite, 0, i);
             builder.UseRendererList(renderList);
             builder.SetGlobalTextureAfterPass(
-                cData.cascadeColorTexture,
+                cascadeColorTexture,
                 Shader.PropertyToID("_StainedShadowColorMap")
             );
             builder.SetGlobalTextureAfterPass(
-                cData.cascadeDepthTexture,
+                cascadeDepthTexture,
                 Shader.PropertyToID("_StainedShadowDepthMap")
             );
             builder.AllowGlobalStateModification(true);
@@ -202,62 +200,105 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.CascadeBounds);
     }
 
-    protected void UpdateLightDataForCascade(CascadeData cData, int cascadeIndex)
+    protected void InitializeCascadeTextures(RenderGraph rg)
     {
-        // Light Direction;
-        Vector3 lightDirection = dirLight.transform.forward;
-        Vector3[] casCorners = cData.cascadeCorners[cascadeIndex];
-
-        Vector3 center = Vector3.zero;
-        for (int i = 0; i < casCorners.Length; i++)
+        // Create the color desc.
+        TextureDesc colorDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
         {
-            center += casCorners[i];
-        }
-        center /= casCorners.Length;
+            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2DArray,
+            name = "_StainedShadowColorMap",
+            clearBuffer = true,
+            slices = 4,
+            clearColor = Color.clear,
+        };
 
-        // Build matrix manually
-        Quaternion lightRot = Quaternion.LookRotation(lightDirection, dirLight.transform.up);
-
-        // Find the depth range.
-        Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
-        float l = float.PositiveInfinity;
-        float r = float.NegativeInfinity;
-        float b = float.PositiveInfinity;
-        float t = float.NegativeInfinity;
-        float far = float.NegativeInfinity;
-        float near = float.PositiveInfinity;
-
-        for (int i = 0; i < casCorners.Length; i++)
+        // Create the depth desc.
+        TextureDesc depthDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
         {
-            Vector3 viewSpace = tempView.MultiplyPoint3x4(casCorners[i]);
-            t = math.max(t, viewSpace.y);
-            b = math.min(b, viewSpace.y);
-            l = math.min(l, viewSpace.x);
-            r = math.max(r, viewSpace.x);
-            far = math.max(far, viewSpace.z);
-            near = math.min(near, viewSpace.z);
+            colorFormat = GraphicsFormat.R32_SFloat,
+            depthBufferBits = DepthBits.None,
+            dimension = TextureDimension.Tex2DArray,
+            name = "_StainedShadowDepthMap",
+            clearBuffer = true,
+            slices = 4,
+            clearColor = Color.red,
+        };
+
+        cascadeColorTexture = rg.CreateTexture(colorDesc);
+        cascadeDepthTexture = rg.CreateTexture(depthDesc);
+    }
+
+    protected void UpdateLightDataForCascades(CascadeData cData)
+    {
+        for (int i = 0; i < cData.CascadeCount; i++)
+        {
+            // Light Direction;
+            Vector3 lightDirection = dirLight.transform.forward;
+            Vector3[] casCorners = cData.cascadeCorners[i];
+
+            Vector3 center = Vector3.zero;
+            for (int j = 0; j < casCorners.Length; j++)
+            {
+                center += casCorners[j];
+            }
+            center /= casCorners.Length;
+
+            // Build matrix manually
+            Quaternion lightRot = Quaternion.LookRotation(lightDirection, dirLight.transform.up);
+
+            // Find the depth range.
+            Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
+            float l = float.PositiveInfinity;
+            float r = float.NegativeInfinity;
+            float b = float.PositiveInfinity;
+            float t = float.NegativeInfinity;
+            float far = float.NegativeInfinity;
+            float near = float.PositiveInfinity;
+
+            for (int j = 0; j < casCorners.Length; j++)
+            {
+                Vector3 viewSpace = tempView.MultiplyPoint3x4(casCorners[j]);
+                t = math.max(t, viewSpace.y);
+                b = math.min(b, viewSpace.y);
+                l = math.min(l, viewSpace.x);
+                r = math.max(r, viewSpace.x);
+                far = math.max(far, viewSpace.z);
+                near = math.min(near, viewSpace.z);
+            }
+
+            // Add tiny padding along Z to prevent near-plane clipping
+            Vector3 diag = new Vector3(r - l, t - b, far - near);
+            Vector3 padding = diag * .2f; // 20% padding (What worked well for me.)
+            l -= padding.x;
+            r += padding.x;
+            b -= padding.y;
+            t += padding.y;
+            near -= padding.z;
+            far += padding.z;
+
+            // float depthCenter = (far + near) * .5f;
+            // Vector3 lightPos = center - lightDirection * depthCenter;
+            Matrix4x4 view = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
+            cData.cascadeViewMatricies[i] = view;
+
+            // Create the Ortho Project Matrix from the AABB
+            cData.cascadeProjMatricies[i] = GL.GetGPUProjectionMatrix(
+                Matrix4x4.Ortho(l, r, b, t, near, far),
+                true
+            );
+
+            cData.cascadeViewProjMatricies[i] =
+                cData.cascadeProjMatricies[i] * cData.cascadeViewMatricies[i];
+
+            // Set Global Shader Params Vector.
+            // x = near, y = far, z = 1 / Far - Near, w = near / far - near
+            Shader.SetGlobalVector(
+                "_ShadowParams",
+                new Vector4(near, far, 1 / (far - near), near / (far - near))
+            );
         }
-
-        float depthCenter = (far + near) * .5f;
-        Vector3 lightPos = center - lightDirection * depthCenter;
-        Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
-        cData.cascadeViewMatricies[cascadeIndex] = view;
-
-        // Create the Ortho Project Matrix from the AABB
-        cData.cascadeProjMatricies[cascadeIndex] = GL.GetGPUProjectionMatrix(
-            Matrix4x4.Ortho(l, r, b, t, near, far),
-            true
-        );
-
-        cData.cascadeViewProjMatricies[cascadeIndex] =
-            cData.cascadeProjMatricies[cascadeIndex] * cData.cascadeViewMatricies[cascadeIndex];
-
-        // Set Global Shader Params Vector.
-        // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-        Shader.SetGlobalVector(
-            "_ShadowParams",
-            new Vector4(near, far, 1 / (far - near), near / (far - near))
-        );
     }
 
     /// <summary>
@@ -290,58 +331,58 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             corners[i + 4] = camToWorld.MultiplyPoint3x4(tempCorners[i]);
     }
 
-    protected void GenerateCascadeCorners(Vector3[] corners, CascadeData cData)
+    protected void GenerateCascadeCorners(Camera camera, CascadeData cData)
     {
-        Vector3 lowerLeft = corners[4] - corners[0];
-        Vector3 upperLeft = corners[5] - corners[1];
-        Vector3 upperRight = corners[6] - corners[2];
-        Vector3 lowerRight = corners[7] - corners[3];
-
         for (int i = 0; i < cData.cascadeCorners.Length; i++)
         {
-            float bound0 = cData.CascadeBounds[i];
-            float bound1 = cData.CascadeBounds[i + 1];
+            float nearBound = cData.CascadeBounds[i];
+            float farBound = cData.CascadeBounds[i + 1];
+
+            float cascadeNear = Mathf.Lerp(camera.nearClipPlane, camera.farClipPlane, nearBound);
+            float cascadeFar = Mathf.Lerp(camera.nearClipPlane, camera.farClipPlane, farBound);
+
+            var camToWorld = camera.transform.localToWorldMatrix;
 
             cData.cascadeCorners[i] = new Vector3[8];
-            //Push corners in order like CalculateFrustumCorners.
-            cData.cascadeCorners[i][0] = corners[0] + lowerLeft * bound0; // lower left near.
-            cData.cascadeCorners[i][1] = corners[1] + upperLeft * bound0; // upper left near.
-            cData.cascadeCorners[i][2] = corners[2] + upperRight * bound0; // upper right near.
-            cData.cascadeCorners[i][3] = corners[3] + lowerRight * bound0; // lower right near.
 
-            cData.cascadeCorners[i][4] = corners[0] + lowerLeft * bound1; // lower left far.
-            cData.cascadeCorners[i][5] = corners[1] + upperLeft * bound1; // upper left far.
-            cData.cascadeCorners[i][6] = corners[2] + upperRight * bound1; // upper right far.
-            cData.cascadeCorners[i][7] = corners[3] + lowerRight * bound1; // lower right far.
+            // Add near world points to the array.
+            camera.CalculateFrustumCorners(
+                viewportRect,
+                cascadeNear,
+                Camera.MonoOrStereoscopicEye.Mono,
+                tempCorners
+            );
+            for (int j = 0; j < tempCorners.Length; j++)
+                cData.cascadeCorners[i][j] = camToWorld.MultiplyPoint3x4(tempCorners[j]);
+
+            // Add far world points to the array.
+            camera.CalculateFrustumCorners(
+                viewportRect,
+                cascadeFar,
+                Camera.MonoOrStereoscopicEye.Mono,
+                tempCorners
+            );
+            for (int j = 0; j < tempCorners.Length; j++)
+                cData.cascadeCorners[i][j + 4] = camToWorld.MultiplyPoint3x4(tempCorners[j]);
         }
     }
 
-    protected CascadeData InitializeCascadeTextures(RenderGraph rg, int cascades)
+    protected void GenerateCullingDataForCascades(
+        CascadeData cData,
+        Camera camera,
+        ScriptableRenderContext context
+    )
     {
-        // Create the color desc.
-        TextureDesc colorDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
-        {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2DArray,
-            name = "_StainedShadowColorMap",
-            clearBuffer = true,
-            slices = 4,
-            clearColor = Color.clear,
-        };
+        camera.TryGetCullingParameters(out var cullingParameters);
 
-        // Create the depth desc.
-        TextureDesc depthDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
+        for (int i = 0; i < cData.CascadeCount; i++)
         {
-            colorFormat = GraphicsFormat.R32G32B32A32_SFloat,
-            depthBufferBits = DepthBits.None,
-            dimension = TextureDimension.Tex2DArray,
-            name = "_StainedShadowDepthMap",
-            clearBuffer = true,
-            slices = 4,
-            clearColor = Color.red,
-        };
-
-        return new CascadeData(rg, colorDesc, depthDesc, cascades);
+            var cParams = cullingParameters;
+            cParams.isOrthographic = true;
+            cParams.cullingMatrix = cData.cascadeViewProjMatricies[i];
+            cParams.maximumVisibleLights = 0;
+            cParams.shadowDistance = float.MaxValue;
+            cData.cascadeCullData[i] = context.Cull(ref cParams);
+        }
     }
 }

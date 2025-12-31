@@ -145,7 +145,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.93338966
+      value: 0.9
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.y
@@ -153,7 +153,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -22.978672
+      value: -44.7
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalRotation.w
@@ -306,6 +306,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_Name
       value: honda_cb_750_four_TS_00
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1092777125890441316, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1300,13 +1304,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 732852295}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.9675088, y: -0, z: -0, w: 0.25283757}
+  m_LocalRotation: {x: 0.04178843, y: 0, z: 0, w: 0.9991265}
   m_LocalPosition: {x: 0, y: 21.6, z: -56.07}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 150.709, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 4.79, y: 0, z: 0}
 --- !u!114 &732852298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1627,7 +1631,7 @@ Transform:
   m_GameObject: {fileID: 987173581}
   serializedVersion: 2
   m_LocalRotation: {x: 0.38268343, y: 0, z: 0, w: 0.92387956}
-  m_LocalPosition: {x: 0, y: 15.26, z: -50.76}
+  m_LocalPosition: {x: 0, y: 23.93, z: -59.43}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
