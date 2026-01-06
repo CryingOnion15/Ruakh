@@ -194,7 +194,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         // -- Set Other Values --
         Shader.SetGlobalVector(
             "_ShadowTexelSize",
-            new Vector2(1 / ShadowMapResolution, 1 / ShadowMapResolution)
+            new Vector2(1.0f / ShadowMapResolution, 1.0f / ShadowMapResolution)
         );
 
         Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.CascadeBounds);

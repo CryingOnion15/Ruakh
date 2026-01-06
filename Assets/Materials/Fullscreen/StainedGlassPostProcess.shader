@@ -62,13 +62,12 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Get the scene color.
                 float4 sceneColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
-            
+
+                // Get the world point.
                 float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
+
+                // Get the shadow color.
                 float4 shadowColor = SampleStainedShadowColor(world);
-                
-                // Compare shadow depth vs light-space depth
-                float shadowDepth = SampleStainedShadowDepth(world);
-                float pixelLightDepth = GetLightSpaceDepth(world);
 
                 // Exclude skybox pixels
                 float isValidReciever = 1.0 - step(.999, linearDepth);
@@ -78,18 +77,16 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 //float shadowOutlineTest = 1.0 - LIGHT_SPACE_OUTLINE_TEST(world);
 
                 // Shadow test: 1 = shadowed, 0 = lit
-                // Add * shadowOutlineTest back in when texture is bigger & details can be there.
-                float shadowTest = step(shadowDepth, pixelLightDepth) * isValidReciever;
-                float shadowPCF = GetShadowPCF(world);
+                float shadowTest = SHADOW_TEST(world) * isValidReciever;
 
                 // Override scene color with shadow color.
-                sceneColor = lerp(sceneColor, shadowColor, shadowTest * shadowPCF);
+                sceneColor = lerp(sceneColor, shadowColor, shadowTest);
 
                 // Enforce outline color and draw the rest.
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
 
                 //Debug Cascades
-                uint cIndex = GetCascadeIndex(world);
+                //uint cIndex = GetCascadeIndex(world);
 
                 // if(cIndex == 0) {
                 //     return float4(1.0,0.0,0.0,1.0);
@@ -101,6 +98,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 //     return float4(1.0,1.0,0.0,1.0);
                 // }
 
+                //return float4(shadowTest,0.0,0.0,1.0);
                 return sceneColor;
             }
             ENDHLSL
