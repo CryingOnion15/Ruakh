@@ -198,6 +198,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         );
 
         Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.CascadeBounds);
+
+        Shader.SetGlobalVector("_LightDirection", dirLight.transform.forward);
     }
 
     protected void InitializeCascadeTextures(RenderGraph rg)
@@ -238,6 +240,15 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Vector3 lightDirection = dirLight.transform.forward;
             Vector3[] casCorners = cData.cascadeCorners[i];
 
+            // Create a rotation quaternion
+            Vector3 up =
+                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
+                    ? Vector3.right
+                    : Vector3.up;
+
+            Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
+
+            // Find the center of the frustum
             Vector3 center = Vector3.zero;
             for (int j = 0; j < casCorners.Length; j++)
             {
@@ -245,11 +256,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             }
             center /= casCorners.Length;
 
-            // Build matrix manually
-            Quaternion lightRot = Quaternion.LookRotation(lightDirection, dirLight.transform.up);
-
             // Find the depth range.
-            Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
+            Matrix4x4 view = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
             float b = float.PositiveInfinity;
@@ -259,7 +267,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             for (int j = 0; j < casCorners.Length; j++)
             {
-                Vector3 viewSpace = tempView.MultiplyPoint3x4(casCorners[j]);
+                Vector3 viewSpace = view.MultiplyPoint3x4(casCorners[j]);
                 t = math.max(t, viewSpace.y);
                 b = math.min(b, viewSpace.y);
                 l = math.min(l, viewSpace.x);
@@ -270,7 +278,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // Add tiny padding along Z to prevent near-plane clipping
             Vector3 diag = new Vector3(r - l, t - b, far - near);
-            Vector3 padding = diag * .2f; // 20% padding (What worked well for me.)
+            Vector3 padding = diag * .02f; // 20% padding (What worked well for me.)
             l -= padding.x;
             r += padding.x;
             b -= padding.y;
@@ -280,7 +288,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // float depthCenter = (far + near) * .5f;
             // Vector3 lightPos = center - lightDirection * depthCenter;
-            Matrix4x4 view = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
             cData.cascadeViewMatricies[i] = view;
 
             // Create the Ortho Project Matrix from the AABB

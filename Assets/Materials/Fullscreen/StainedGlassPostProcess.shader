@@ -49,6 +49,13 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 return o;
             }
 
+            float3 ReconstructNormal(float3 world) {
+                float3 dx = float3(ddx(world.x), ddx(world.y), ddx(world.z));
+                float3 dy = float3(ddy(world.x), ddy(world.y), ddy(world.z));
+
+                return normalize(cross(dy, dx));
+            }
+
             float4 frag (v2f IN) : SV_Target
             {
                 // Revers the uv if is starts from the top.
@@ -65,6 +72,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
 
                 // Get the world point.
                 float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
+                float3 normal = ReconstructNormal(world);
 
                 // Get the shadow color.
                 float4 shadowColor = SampleStainedShadowColor(world);
@@ -77,7 +85,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 //float shadowOutlineTest = 1.0 - LIGHT_SPACE_OUTLINE_TEST(world);
 
                 // Shadow test: 1 = shadowed, 0 = lit
-                float shadowTest = SHADOW_TEST(world) * isValidReciever;
+                float shadowTest = SHADOW_TEST(world, normal) * isValidReciever;
 
                 // Override scene color with shadow color.
                 sceneColor = lerp(sceneColor, shadowColor, shadowTest);
@@ -86,19 +94,21 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
 
                 //Debug Cascades
-                //uint cIndex = GetCascadeIndex(world);
+                uint cIndex = GetCascadeIndex(world);
 
-                // if(cIndex == 0) {
-                //     return float4(1.0,0.0,0.0,1.0);
-                // } else if(cIndex == 1) {
-                //     return float4(0.0,1.0,0.0,1.0);
-                // } else if(cIndex == 2) {
-                //     return float4(0.0,0.0,1.0,1.0);
-                // } else {
-                //     return float4(1.0,1.0,0.0,1.0);
-                // }
+                float4 color;
 
-                //return float4(shadowTest,0.0,0.0,1.0);
+                if(cIndex == 0) {
+                    color = float4(1.0,0.0,1.0,1.0);
+                } else if(cIndex == 1) {
+                    color = float4(0.0,1.0,0.0,1.0);
+                } else if(cIndex == 2) {
+                    color = float4(0.0,0.0,1.0,1.0);
+                } else {
+                    color = float4(1.0,1.0,0.0,1.0);
+                }
+
+                return lerp(sceneColor, color, 0.5);
                 return sceneColor;
             }
             ENDHLSL

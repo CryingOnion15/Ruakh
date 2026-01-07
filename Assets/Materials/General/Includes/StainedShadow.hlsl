@@ -22,9 +22,11 @@ CBUFFER_START(StainedCascadeBounds)
    float _StainedCascadeBounds[5];
 CBUFFER_END
 
-float _CascadeBlendRange = 0.05;
+float _CascadeBlendRange = .05;
+float _CascadeSlopBias[4] = {0.1, 0.1, 0.1, 0.5};
 float4 _ShadowParams;
 float2 _ShadowTexelSize;
+float3 _LightDirection;
 
 static const float2 poisson[8] = {
     float2(-0.326, -0.406),
@@ -154,8 +156,14 @@ float GetDepthBlend(float2 uv, uint cascadeIndex, float scale, float3 worldPos, 
     return sampledDepth; 
 }
 
+float GetBias(float3 normal, uint cascadeIndex) {
+    //float bias = 0.005;
+    float slopeBias = _CascadeSlopBias[cascadeIndex];
+    return slopeBias * (1.0 - dot(normal, _LightDirection));
+}
+
 // Get the shadow value based on poisson distribution offsets.
-float SHADOW_TEST(float3 worldPos) {
+float SHADOW_TEST(float3 worldPos, float3 normal) {
     uint cascadeIndex = GetCascadeIndex(worldPos);
     float2 uv = GetLightSpaceUV(worldPos, cascadeIndex);
     float scale = lerp(.75, 2.5, cascadeIndex / 3.0);
@@ -165,9 +173,10 @@ float SHADOW_TEST(float3 worldPos) {
 
     for (int i = 0; i < 8; i++)
     {
-        float sampledDepth = GetDepthBlend(uv, cascadeIndex, scale, worldPos, i);
-
-        shadow += step(sampledDepth, currentDepth);
+        float2 sample = saturate(uv + (poisson[i] * _ShadowTexelSize.xy * scale));
+        //float sampledDepth = GetDepthBlend(uv, cascadeIndex, scale, worldPos, i);
+        float sampledDepth = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, sample, cascadeIndex).r;
+        shadow += step(sampledDepth, currentDepth + GetBias(normal, cascadeIndex));
     }
 
     return shadow / 8.0;
