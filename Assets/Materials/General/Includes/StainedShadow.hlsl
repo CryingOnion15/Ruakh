@@ -22,7 +22,7 @@ CBUFFER_START(StainedCascadeBounds)
    float _StainedCascadeBounds[5];
 CBUFFER_END
 
-float _CascadeBlendRange = .05;
+float _CascadeBlendRange = 20;
 float _CascadeSlopBias[4] = {0.1, 0.1, 0.1, 0.5};
 float4 _ShadowParams;
 float2 _ShadowTexelSize;
@@ -47,8 +47,15 @@ float GetCameraDepth(float3 worldPos) {
     return depth;
 }
 
+float GetCameraDepthTest(float3 worldPos)
+{
+    float3 viewPos = TransformWorldToView(worldPos);
+    return -viewPos.z;
+}
+
+
 uint GetCascadeIndex(float3 worldPos) {
-    float depth = GetCameraDepth(worldPos);
+    float depth = GetCameraDepthTest(worldPos);
 
     uint index = 0;
     index += depth > _StainedCascadeBounds[1];
@@ -59,73 +66,66 @@ uint GetCascadeIndex(float3 worldPos) {
 }
 
 float GetCascadeBlend(float3 worldPos, uint cascadeIndex) {
-    float depth = GetCameraDepth(worldPos);
+
+    if (cascadeIndex >= 3) return 0.0;
+
+    float depth = GetCameraDepthTest(worldPos);
+
+    // Blend based on distance between bounds
+    float lower = _StainedCascadeBounds[cascadeIndex];
     float upper = _StainedCascadeBounds[cascadeIndex + 1];
 
-    float blend = saturate((depth - (upper - _CascadeBlendRange)) / _CascadeBlendRange);
-
-    return blend;
+    return saturate((depth - lower) / _CascadeBlendRange);
 }
 
 float2 GetLightSpaceUV(float3 worldPos, uint cascadeIndex) {
     float4 clipPos = mul(_StainedShadowVPMatrix[cascadeIndex], float4(worldPos, 1.0));
     float2 uv = clipPos.xy / clipPos.w * 0.5 + 0.5;
 
-    return uv;
+    return floor(uv / _ShadowTexelSize) * _ShadowTexelSize;
 }
 
 // Sample for the shadow color.
 float4 SampleStainedShadowColor(float3 worldPos)
 {
-    uint cascadeIndex = GetCascadeIndex(worldPos);
-    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex);
-    float blend = 0.0;
-    
-    if(cascadeIndex < 3) {
-        blend = GetCascadeBlend(worldPos, cascadeIndex);
+    float depth = GetCameraDepthTest(worldPos);
+    uint cascadeIndex = GetCascadeIndex(depth);
+    float blend = GetCascadeBlend(depth, cascadeIndex);
+
+    float2 uv = GetLightSpaceUV(cascadeIndex, worldPos);
+    float4 color = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy, cascadeIndex);
+
+    if (cascadeIndex < 3 && blend > 0.0)
+    {
+        float2 uv1 = GetLightSpaceUV(cascadeIndex + 1, worldPos);
+        float4 color1 = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv1.xy, cascadeIndex + 1);
+
+        return lerp(color, color1, blend);
     }
 
-    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
-        return 0.0;
-
-    float4 shadowColor = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy, cascadeIndex);
-
-    if(blend > 0.0) {
-        float2 uv2 = GetLightSpaceUV(worldPos, cascadeIndex + 1);
-
-        float4 shadowBlend = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv2.xy, cascadeIndex + 1);
-        
-        return lerp(shadowColor, shadowBlend, blend);
-    }
-
-    return shadowColor;
+    return color;
 }
 
-// Sample the light space depth map.
-float SampleStainedShadowDepth(float3 worldPos)
+
+// Sample shadow depth with cascade blending
+float SampleShadowDepthBlend(float3 worldPos, uint cascadeIndex, float2 poissonOffset)
 {
-    uint cascadeIndex = GetCascadeIndex(worldPos);
-    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex);
-    float blend = 0.0;
-    
-    if(cascadeIndex < 3) {
-        blend = GetCascadeBlend(worldPos, cascadeIndex);
-    }
-    
-    if (any(uv.xy < 0.0) || any(uv.xy > 1.0))
-        return 1.0;
+    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex) + poissonOffset;
 
-    float shadowDepth = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv.xy, cascadeIndex).r;
+    if (cascadeIndex >= 3) 
+        return SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv, cascadeIndex).r;
 
-    if(blend > 0.0) {
-        float2 uv2 = GetLightSpaceUV(worldPos, cascadeIndex + 1);
+    // Compute blend factor
+    float blend = GetCascadeBlend(worldPos, cascadeIndex);
 
-        float shadowBlend = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowColorMap, uv2.xy, cascadeIndex + 1);
-        
-        return lerp(shadowDepth, shadowBlend, blend);
-    }
+    // Get UVs for next cascade
+    float2 uv1 = GetLightSpaceUV(worldPos, cascadeIndex + 1) + poissonOffset;
 
-    return shadowDepth;
+    // Sample both cascades
+    float depth = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv, cascadeIndex).r;
+    float depth1 = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv1, cascadeIndex + 1).r;
+
+    return lerp(depth, depth1, blend);
 }
 
 float GetLightSpaceDepth(float3 worldPos) {
@@ -162,20 +162,20 @@ float GetBias(float3 normal, uint cascadeIndex) {
     return slopeBias * (1.0 - dot(normal, _LightDirection));
 }
 
-// Get the shadow value based on poisson distribution offsets.
-float SHADOW_TEST(float3 worldPos, float3 normal) {
+// Main shadow test with Poisson sampling
+float SHADOW_TEST(float3 worldPos, float3 normal)
+{
     uint cascadeIndex = GetCascadeIndex(worldPos);
-    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex);
-    float scale = lerp(.75, 2.5, cascadeIndex / 3.0);
-
     float currentDepth = GetLightSpaceDepth(worldPos);
+    float scale = lerp(0.75, 2.5, cascadeIndex / 3.0);
+
     float shadow = 0.0;
 
+    // Loop through Poisson offsets
     for (int i = 0; i < 8; i++)
     {
-        float2 sample = saturate(uv + (poisson[i] * _ShadowTexelSize.xy * scale));
-        //float sampledDepth = GetDepthBlend(uv, cascadeIndex, scale, worldPos, i);
-        float sampledDepth = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, sample, cascadeIndex).r;
+        float2 poissonOffset = poisson[i] * _ShadowTexelSize.xy * scale;
+        float sampledDepth = SampleShadowDepthBlend(worldPos, cascadeIndex, poissonOffset);
         shadow += step(sampledDepth, currentDepth + GetBias(normal, cascadeIndex));
     }
 

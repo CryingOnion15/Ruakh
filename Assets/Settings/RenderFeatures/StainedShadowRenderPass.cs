@@ -12,6 +12,7 @@ public class CascadeData
     public Matrix4x4[] cascadeProjMatricies;
     public Matrix4x4[] cascadeViewProjMatricies;
     public CullingResults[] cascadeCullData;
+    public float[] MeterBounds;
     public int CascadeCount;
     public readonly float[] CascadeBounds = new float[] { 0f, .1f, .25f, .5f, 1f };
 
@@ -23,6 +24,7 @@ public class CascadeData
         cascadeProjMatricies = new Matrix4x4[cascades];
         cascadeViewProjMatricies = new Matrix4x4[cascades];
         cascadeCullData = new CullingResults[cascades];
+        MeterBounds = new float[cascades + 1];
     }
 }
 
@@ -76,8 +78,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         //StainedGlassData glassData = frameData.Get<StainedGlassData>();
         Camera camera = cameraData.camera;
 
-        UpdateFrustumCorners(Camera.main, corners);
-        GenerateCascadeCorners(Camera.main, cData);
+        UpdateFrustumCorners(camera, corners);
+        GenerateCascadeCorners(camera, cData);
         UpdateLightDataForCascades(cData);
 
         for (int i = 0; i < 4; i++)
@@ -147,10 +149,10 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             );
         }
 
-        SetShaderVariables(cData);
+        SetShaderVariables(cData, camera);
     }
 
-    protected void SetShaderVariables(CascadeData cData)
+    protected void SetShaderVariables(CascadeData cData, Camera camera)
     {
         // --- Set Camera Params ---
         // Build matrix manually
@@ -197,7 +199,17 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             new Vector2(1.0f / ShadowMapResolution, 1.0f / ShadowMapResolution)
         );
 
-        Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.CascadeBounds);
+        //Set the meter bounds.
+        for (int i = 0; i < cData.MeterBounds.Length; i++)
+        {
+            cData.MeterBounds[i] = Mathf.Lerp(
+                camera.nearClipPlane,
+                camera.farClipPlane,
+                cData.CascadeBounds[i]
+            );
+        }
+
+        Shader.SetGlobalFloatArray("_StainedCascadeBounds", cData.MeterBounds);
 
         Shader.SetGlobalVector("_LightDirection", dirLight.transform.forward);
     }
@@ -236,17 +248,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     {
         for (int i = 0; i < cData.CascadeCount; i++)
         {
-            // Light Direction;
-            Vector3 lightDirection = dirLight.transform.forward;
             Vector3[] casCorners = cData.cascadeCorners[i];
-
-            // Create a rotation quaternion
-            Vector3 up =
-                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
-                    ? Vector3.right
-                    : Vector3.up;
-
-            Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
             // Find the center of the frustum
             Vector3 center = Vector3.zero;
@@ -255,6 +257,17 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 center += casCorners[j];
             }
             center /= casCorners.Length;
+
+            // Light Direction;
+            Vector3 lightDirection = dirLight.transform.forward;
+
+            // Create a rotation quaternion
+            Vector3 up =
+                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
+                    ? Vector3.right
+                    : Vector3.up;
+
+            Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
             // Find the depth range.
             Matrix4x4 view = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
@@ -285,6 +298,18 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             t += padding.y;
             near -= padding.z;
             far += padding.z;
+
+            //Texel Snapping to the nearest whole texel
+            float width = r - l;
+            float height = t - b;
+            float texelSizeX = width / ShadowMapResolution;
+            float texelSizeY = height / ShadowMapResolution;
+
+            l = Mathf.Floor(l / texelSizeX) * texelSizeX;
+            b = Mathf.Floor(b / texelSizeY) * texelSizeY;
+
+            r = l + width;
+            t = b + height;
 
             // float depthCenter = (far + near) * .5f;
             // Vector3 lightPos = center - lightDirection * depthCenter;
