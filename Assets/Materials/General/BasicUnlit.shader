@@ -32,7 +32,7 @@ Shader "Unlit/BasicUnlit"
                 //float4x4 _StainedShadowViewMatrix[4];
             //CBUFFER_END
 
-            //float4 _ShadowParams;
+            float4 _GlobalShadowParams;
 
             struct appdata
             {
@@ -91,7 +91,10 @@ Shader "Unlit/BasicUnlit"
                 float lightViewDepth = lightViewPos.z;
 
                 // Normalize manually using your light near/far
-                OUT.depth = saturate(lightViewDepth * _ShadowParams.z - _ShadowParams.w);
+                OUT.depth = (lightViewDepth - _GlobalShadowParams.x) / (_GlobalShadowParams.y - _GlobalShadowParams.x);
+
+                // Clamp to valid range
+                OUT.depth = saturate(OUT.depth);
 
                 return OUT;
             }

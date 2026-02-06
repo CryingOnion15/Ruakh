@@ -13,6 +13,7 @@ public class CascadeData
     public Matrix4x4[] cascadeViewProjMatricies;
     public CullingResults[] cascadeCullData;
     public float[] MeterBounds;
+    public Vector4[] ShadowParams;
     public int CascadeCount;
     public readonly float[] CascadeBounds = new float[] { 0f, .1f, .25f, .5f, 1f };
 
@@ -25,6 +26,7 @@ public class CascadeData
         cascadeViewProjMatricies = new Matrix4x4[cascades];
         cascadeCullData = new CullingResults[cascades];
         MeterBounds = new float[cascades + 1];
+        ShadowParams = new Vector4[cascades];
     }
 }
 
@@ -182,11 +184,9 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         }
 
         // Set Global Shader Params Vector.
+        Shader.SetGlobalVectorArray("_ShadowParams", this.cData.ShadowParams);
         // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-        Shader.SetGlobalVector(
-            "_ShadowParams",
-            new Vector4(near, far, 1 / (far - near), near / (far - near))
-        );
+        Shader.SetGlobalVector("_GlobalShadowParams", new Vector4(near, far, 1 / (far - near), near / (far - near)));
 
         // -- Set Matrices --
         Shader.SetGlobalMatrixArray("_StainedShadowViewMatrix", cData.cascadeViewMatricies);
@@ -311,6 +311,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             r = l + width;
             t = b + height;
 
+
             // float depthCenter = (far + near) * .5f;
             // Vector3 lightPos = center - lightDirection * depthCenter;
             cData.cascadeViewMatricies[i] = view;
@@ -324,12 +325,15 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             cData.cascadeViewProjMatricies[i] =
                 cData.cascadeProjMatricies[i] * cData.cascadeViewMatricies[i];
 
-            // Set Global Shader Params Vector.
-            // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-            Shader.SetGlobalVector(
-                "_ShadowParams",
-                new Vector4(near, far, 1 / (far - near), near / (far - near))
+            // Set Shader Params for the cascade.
+            // x = near, y = far, z = 1 / (far - near), w = unused
+            cData.ShadowParams[i] = new Vector4(
+                near, 
+                far, 
+                1f / (far - near), 
+                0f
             );
+
         }
     }
 

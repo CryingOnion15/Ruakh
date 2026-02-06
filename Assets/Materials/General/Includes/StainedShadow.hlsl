@@ -22,9 +22,12 @@ CBUFFER_START(StainedCascadeBounds)
    float _StainedCascadeBounds[5];
 CBUFFER_END
 
+CBUFFER_START(StainedShadowParams)
+    float4 _ShadowParams[4];
+CBUFFER_END
+
 float _CascadeBlendRange = 20;
-float _CascadeSlopBias[4] = {0.1, 0.1, 0.1, 0.5};
-float4 _ShadowParams;
+float _CascadeSlopBias[4] = {1.0, 1.0, 1.0, 2.0};
 float2 _ShadowTexelSize;
 float3 _LightDirection;
 
@@ -65,39 +68,40 @@ uint GetCascadeIndex(float3 worldPos) {
     return index;
 }
 
+float2 GetLightSpaceUV(float3 worldPos, uint cascadeIndex) {
+    float4 clipPos = mul(_StainedShadowVPMatrix[cascadeIndex], float4(worldPos, 1.0));
+    float2 uv = clipPos.xy / clipPos.w * 0.5 + 0.5;
+    return uv; // Remove the floor() operation
+}
+
 float GetCascadeBlend(float3 worldPos, uint cascadeIndex) {
 
     if (cascadeIndex >= 3) return 0.0;
 
     float depth = GetCameraDepthTest(worldPos);
-
-    // Blend based on distance between bounds
     float lower = _StainedCascadeBounds[cascadeIndex];
     float upper = _StainedCascadeBounds[cascadeIndex + 1];
 
-    return saturate((depth - lower) / _CascadeBlendRange);
-}
+    // Blend range based on actual cascade bounds, not fixed value
+    float cascadeRange = upper - lower;
+    float blendRange = cascadeRange * 0.1; 
 
-float2 GetLightSpaceUV(float3 worldPos, uint cascadeIndex) {
-    float4 clipPos = mul(_StainedShadowVPMatrix[cascadeIndex], float4(worldPos, 1.0));
-    float2 uv = clipPos.xy / clipPos.w * 0.5 + 0.5;
-
-    return floor(uv / _ShadowTexelSize) * _ShadowTexelSize;
+    return saturate((depth - (upper - blendRange)) / blendRange);
 }
 
 // Sample for the shadow color.
 float4 SampleStainedShadowColor(float3 worldPos)
 {
     float depth = GetCameraDepthTest(worldPos);
-    uint cascadeIndex = GetCascadeIndex(depth);
-    float blend = GetCascadeBlend(depth, cascadeIndex);
+    uint cascadeIndex = GetCascadeIndex(worldPos);
+    float blend = GetCascadeBlend(worldPos, cascadeIndex);
 
-    float2 uv = GetLightSpaceUV(cascadeIndex, worldPos);
+    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex);
     float4 color = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv.xy, cascadeIndex);
 
     if (cascadeIndex < 3 && blend > 0.0)
     {
-        float2 uv1 = GetLightSpaceUV(cascadeIndex + 1, worldPos);
+        float2 uv1 = GetLightSpaceUV(worldPos, cascadeIndex + 1);
         float4 color1 = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowColorMap, sampler_StainedShadowColorMap, uv1.xy, cascadeIndex + 1);
 
         return lerp(color, color1, blend);
@@ -110,7 +114,7 @@ float4 SampleStainedShadowColor(float3 worldPos)
 // Sample shadow depth with cascade blending
 float SampleShadowDepthBlend(float3 worldPos, uint cascadeIndex, float2 poissonOffset)
 {
-    float2 uv = GetLightSpaceUV(worldPos, cascadeIndex) + poissonOffset;
+    float2 uv = saturate(GetLightSpaceUV(worldPos, cascadeIndex) + poissonOffset);
 
     if (cascadeIndex >= 3) 
         return SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv, cascadeIndex).r;
@@ -119,7 +123,7 @@ float SampleShadowDepthBlend(float3 worldPos, uint cascadeIndex, float2 poissonO
     float blend = GetCascadeBlend(worldPos, cascadeIndex);
 
     // Get UVs for next cascade
-    float2 uv1 = GetLightSpaceUV(worldPos, cascadeIndex + 1) + poissonOffset;
+    float2 uv1 = saturate(GetLightSpaceUV(worldPos, cascadeIndex + 1) + poissonOffset);
 
     // Sample both cascades
     float depth = SAMPLE_TEXTURE2D_ARRAY(_StainedShadowDepthMap, sampler_StainedShadowDepthMap, uv, cascadeIndex).r;
@@ -128,12 +132,26 @@ float SampleShadowDepthBlend(float3 worldPos, uint cascadeIndex, float2 poissonO
     return lerp(depth, depth1, blend);
 }
 
-float GetLightSpaceDepth(float3 worldPos) {
-    uint cascadeIndex = GetCascadeIndex(worldPos);
+float GetLightSpaceDepth(float3 worldPos, uint cascadeIndex) {
     float4 lightViewPos = mul(_StainedShadowViewMatrix[cascadeIndex], float4(worldPos, 1.0));
     float lightViewDepth = lightViewPos.z;
     
-    return saturate(lightViewDepth * _ShadowParams.z - _ShadowParams.w);
+    // Properly normalize to [0, 1] range
+    float near = _ShadowParams[cascadeIndex].x;
+    float far = _ShadowParams[cascadeIndex].y;
+    return (lightViewDepth - near) / (far - near);
+}
+
+float GetLightSpaceDepthBlend(float3 worldPos, uint cascadeIndex) {
+    float depth = GetLightSpaceDepth(worldPos, cascadeIndex);
+
+    if(cascadeIndex < 3) {
+        float blend = GetCascadeBlend(worldPos, cascadeIndex);
+        float nextDepth = GetLightSpaceDepth(worldPos, cascadeIndex + 1);
+        return lerp(depth, nextDepth, blend);
+    }
+
+    return depth;
 }
 
 float GetDepthBlend(float2 uv, uint cascadeIndex, float scale, float3 worldPos, uint poissonIndex) {
@@ -157,17 +175,19 @@ float GetDepthBlend(float2 uv, uint cascadeIndex, float scale, float3 worldPos, 
 }
 
 float GetBias(float3 normal, uint cascadeIndex) {
-    //float bias = 0.005;
-    float slopeBias = _CascadeSlopBias[cascadeIndex];
-    return slopeBias * (1.0 - dot(normal, _LightDirection));
+    // Much more aggressive bias
+    float baseBias = lerp(0.002, 0.008, cascadeIndex / 3.0);
+    float slopeBias = _CascadeSlopBias[cascadeIndex] * 0.02 * (1.0 - abs(dot(normal, _LightDirection)));
+    return baseBias + slopeBias;
 }
 
 // Main shadow test with Poisson sampling
 float SHADOW_TEST(float3 worldPos, float3 normal)
 {
     uint cascadeIndex = GetCascadeIndex(worldPos);
-    float currentDepth = GetLightSpaceDepth(worldPos);
+    float currentDepth = GetLightSpaceDepthBlend(worldPos, cascadeIndex);  // BLEND HERE
     float scale = lerp(0.75, 2.5, cascadeIndex / 3.0);
+    float bias = GetBias(normal, cascadeIndex);
 
     float shadow = 0.0;
 
@@ -176,7 +196,7 @@ float SHADOW_TEST(float3 worldPos, float3 normal)
     {
         float2 poissonOffset = poisson[i] * _ShadowTexelSize.xy * scale;
         float sampledDepth = SampleShadowDepthBlend(worldPos, cascadeIndex, poissonOffset);
-        shadow += step(sampledDepth, currentDepth + GetBias(normal, cascadeIndex));
+        shadow += step(sampledDepth, currentDepth - bias);
     }
 
     return shadow / 8.0;

@@ -91,7 +91,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 sceneColor = lerp(sceneColor, shadowColor, shadowTest);
 
                 // Enforce outline color and draw the rest.
-                sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
+                //sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
 
                 //Debug Cascades
                 uint cIndex = GetCascadeIndex(world);
@@ -99,7 +99,7 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 float4 color;
 
                 if(cIndex == 0) {
-                    color = float4(1.0,0.0,0.0,1.0);
+                    color = float4(1.0,0.0,1.0,1.0);
                 } else if(cIndex == 1) {
                     color = float4(0.0,1.0,0.0,1.0);
                 } else if(cIndex == 2) {
@@ -107,11 +107,10 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 } else {
                     color = float4(1.0,1.0,0.0,1.0);
                 }
-
-                return float4(shadowTest, 0.0, 0.0,1.0);
-                //return color;
-                //return lerp(sceneColor, color, 0.5);
-                //return sceneColor;
+                
+                return float4(shadowTest,0.0, 0.0, 1.0);
+                return lerp(color, sceneColor, 0.5);
+                return sceneColor;
             }
             ENDHLSL
         }
