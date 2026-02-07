@@ -186,7 +186,10 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         // Set Global Shader Params Vector.
         Shader.SetGlobalVectorArray("_ShadowParams", this.cData.ShadowParams);
         // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-        Shader.SetGlobalVector("_GlobalShadowParams", new Vector4(near, far, 1 / (far - near), near / (far - near)));
+        Shader.SetGlobalVector(
+            "_GlobalShadowParams",
+            new Vector4(near, far, 1 / (far - near), near / (far - near))
+        );
 
         // -- Set Matrices --
         Shader.SetGlobalMatrixArray("_StainedShadowViewMatrix", cData.cascadeViewMatricies);
@@ -244,6 +247,33 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         cascadeDepthTexture = rg.CreateTexture(depthDesc);
     }
 
+    protected Matrix4x4 GenerateViewMatrix(Quaternion lightRot, Vector3 center, Vector3 stableUp)
+    {
+        // Find the depth range.
+        Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
+        float l = float.PositiveInfinity;
+        float r = float.NegativeInfinity;
+        float b = float.PositiveInfinity;
+        float t = float.NegativeInfinity;
+        float far = float.NegativeInfinity;
+        float near = float.PositiveInfinity;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 viewSpace = tempView.MultiplyPoint3x4(corners[i]);
+            t = math.max(t, viewSpace.y);
+            b = math.min(b, viewSpace.y);
+            l = math.min(l, viewSpace.x);
+            r = math.max(r, viewSpace.x);
+            far = math.max(far, viewSpace.z);
+            near = math.min(near, viewSpace.z);
+        }
+
+        float depthRange = far - near;
+        Vector3 lightPosition = center + lightDirection * (depthRange * 0.5f);
+        return Matrix4x4.TRS(lightPosition, lightRot, Vector3.one).inverse;
+    }
+
     protected void UpdateLightDataForCascades(CascadeData cData)
     {
         for (int i = 0; i < cData.CascadeCount; i++)
@@ -270,7 +300,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
             // Find the depth range.
-            Matrix4x4 view = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
+            Matrix4x4 view = GenerateViewMatrix(lightRot, center, up);
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
             float b = float.PositiveInfinity;
@@ -291,7 +321,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // Add tiny padding along Z to prevent near-plane clipping
             Vector3 diag = new Vector3(r - l, t - b, far - near);
-            Vector3 padding = diag * .02f; // 20% padding (What worked well for me.)
+            Vector3 padding = diag * .02f;
             l -= padding.x;
             r += padding.x;
             b -= padding.y;
@@ -304,13 +334,18 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             float height = t - b;
             float texelSizeX = width / ShadowMapResolution;
             float texelSizeY = height / ShadowMapResolution;
+            float centerX = (l + r) * 0.5f;
+            float centerY = (b + t) * 0.5f;
 
+            centerX = Mathf.Floor(centerX / texelSizeX) * texelSizeX;
+            centerY = Mathf.Floor(centerY / texelSizeY) * texelSizeY;
             l = Mathf.Floor(l / texelSizeX) * texelSizeX;
             b = Mathf.Floor(b / texelSizeY) * texelSizeY;
 
-            r = l + width;
-            t = b + height;
-
+            l = centerX - width * 0.5f;
+            r = centerX + width * 0.5f;
+            b = centerY - height * 0.5f;
+            t = centerY + height * 0.5f;
 
             // float depthCenter = (far + near) * .5f;
             // Vector3 lightPos = center - lightDirection * depthCenter;
@@ -327,13 +362,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // Set Shader Params for the cascade.
             // x = near, y = far, z = 1 / (far - near), w = unused
-            cData.ShadowParams[i] = new Vector4(
-                near, 
-                far, 
-                1f / (far - near), 
-                0f
-            );
-
+            cData.ShadowParams[i] = new Vector4(near, far, 1f / (far - near), 0f);
         }
     }
 

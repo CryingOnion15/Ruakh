@@ -196,7 +196,7 @@ float SHADOW_TEST(float3 worldPos, float3 normal)
     {
         float2 poissonOffset = poisson[i] * _ShadowTexelSize.xy * scale;
         float sampledDepth = SampleShadowDepthBlend(worldPos, cascadeIndex, poissonOffset);
-        shadow += step(sampledDepth, currentDepth - bias);
+        shadow += step(sampledDepth, currentDepth + bias);
     }
 
     return shadow / 8.0;

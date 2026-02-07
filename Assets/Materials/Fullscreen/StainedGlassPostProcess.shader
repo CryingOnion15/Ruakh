@@ -107,8 +107,11 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 } else {
                     color = float4(1.0,1.0,0.0,1.0);
                 }
+
+                float currentDepth = GetLightSpaceDepth(world, cIndex);
                 
-                return float4(shadowTest,0.0, 0.0, 1.0);
+                //return abs(ddx(currentDepth)) * 100;
+                return float4(shadowTest, 0.0, 0.0, 1.0);
                 return lerp(color, sceneColor, 0.5);
                 return sceneColor;
             }
