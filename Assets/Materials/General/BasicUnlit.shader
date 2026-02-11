@@ -58,7 +58,7 @@ Shader "Unlit/BasicUnlit"
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
                 o.posWS = float4(TransformObjectToWorld(v.vertex), 1.0);
                 o.casIndex = GetCascadeIndex(float3(o.posWS.xyz));
-                o.shadowSpace = mul(_StainedShadowVPMatrix[o.casIndex], float4(TransformObjectToWorld(v.vertex), 1.0));
+                o.shadowSpace = mul(_StainedShadowVPMatrix[o.casIndex], o.posWS);
                 o.uv = v.uv;
                 return o;
             }
@@ -71,7 +71,6 @@ Shader "Unlit/BasicUnlit"
                 float depth : SV_Target1;
                 float3 normal   : SV_Target2;
                 float lum : SV_Target3;
-                //float test : SV_Depth;
             };
 
             FragmentOutput frag (v2f i)

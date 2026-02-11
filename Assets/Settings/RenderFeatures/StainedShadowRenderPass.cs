@@ -48,6 +48,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     // Light Matrices and Light Direction
     protected Vector3 lightDirection;
+    protected Vector3 orthoPadding;
     protected CascadeData cData;
 
     class PassData
@@ -58,7 +59,13 @@ public class StainedShadowRenderPass : ScriptableRenderPass
     }
 
     // Setup the render pass with necessary data.
-    public void Setup(Light light, LayerMask mask, Material dataOverrideMat, int mapResolution)
+    public void Setup(
+        Light light,
+        LayerMask mask,
+        Material dataOverrideMat,
+        int mapResolution,
+        Vector3 oPadding
+    )
     {
         dirLight = light;
         drawMask = mask;
@@ -66,6 +73,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         ShadowMapResolution = mapResolution;
         requiresIntermediateTexture = true;
         cData = new CascadeData(4);
+        orthoPadding = oPadding;
     }
 
     // Override to define the render pass instructions.
@@ -247,7 +255,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         cascadeDepthTexture = rg.CreateTexture(depthDesc);
     }
 
-    protected Matrix4x4 GenerateViewMatrix(Quaternion lightRot, Vector3 center, Vector3 stableUp)
+    protected Matrix4x4 GenerateViewMatrix(Quaternion lightRot, Vector3 center, Vector3[] corners)
     {
         // Find the depth range.
         Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
@@ -269,9 +277,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             near = math.min(near, viewSpace.z);
         }
 
-        float depthRange = far - near;
-        Vector3 lightPosition = center + lightDirection * (depthRange * 0.5f);
-        return Matrix4x4.TRS(lightPosition, lightRot, Vector3.one).inverse;
+        return Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
     }
 
     protected void UpdateLightDataForCascades(CascadeData cData)
@@ -300,7 +306,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
             // Find the depth range.
-            Matrix4x4 view = GenerateViewMatrix(lightRot, center, up);
+            Matrix4x4 view = GenerateViewMatrix(lightRot, center, casCorners);
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
             float b = float.PositiveInfinity;
@@ -319,33 +325,31 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 near = math.min(near, viewSpace.z);
             }
 
-            // Add tiny padding along Z to prevent near-plane clipping
-            Vector3 diag = new Vector3(r - l, t - b, far - near);
-            Vector3 padding = diag * .02f;
-            l -= padding.x;
-            r += padding.x;
-            b -= padding.y;
-            t += padding.y;
-            near -= padding.z;
-            far += padding.z;
+            // Addin the padding.
+            float xPadding = (r - l) * orthoPadding.x;
+            float yPadding = (t - b) * orthoPadding.y;
+            float zPadding = (far - near) * orthoPadding.z;
+
+            float angleBias = Vector3.Dot(lightDirection, Vector3.up);
+            float dynamicPadding = zPadding * Mathf.Sign(angleBias);
+
+            l -= xPadding;
+            r += xPadding;
+            b -= yPadding;
+            t += yPadding;
+            far += dynamicPadding;
 
             //Texel Snapping to the nearest whole texel
-            float width = r - l;
-            float height = t - b;
-            float texelSizeX = width / ShadowMapResolution;
-            float texelSizeY = height / ShadowMapResolution;
-            float centerX = (l + r) * 0.5f;
-            float centerY = (b + t) * 0.5f;
+            // float width = r - l;
+            // float height = t - b;
+            // float texelSizeX = width / ShadowMapResolution;
+            // float texelSizeY = height / ShadowMapResolution;
 
-            centerX = Mathf.Floor(centerX / texelSizeX) * texelSizeX;
-            centerY = Mathf.Floor(centerY / texelSizeY) * texelSizeY;
-            l = Mathf.Floor(l / texelSizeX) * texelSizeX;
-            b = Mathf.Floor(b / texelSizeY) * texelSizeY;
-
-            l = centerX - width * 0.5f;
-            r = centerX + width * 0.5f;
-            b = centerY - height * 0.5f;
-            t = centerY + height * 0.5f;
+            // // Snap L/R/B/T to texels
+            // l = Mathf.Floor(l / texelSizeX) * texelSizeX;
+            // r = Mathf.Ceil(r / texelSizeX) * texelSizeX;
+            // b = Mathf.Floor(b / texelSizeY) * texelSizeY;
+            // t = Mathf.Ceil(t / texelSizeY) * texelSizeY;
 
             // float depthCenter = (far + near) * .5f;
             // Vector3 lightPos = center - lightDirection * depthCenter;

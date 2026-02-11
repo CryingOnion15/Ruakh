@@ -14,11 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   outlinePassEvent: 100
+  maskEvent: 300
   postProcessEvent: 550
   outlineMask:
     serializedVersion: 2
     m_Bits: 1
+  allOpaqueMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   dataOverrideMaterial: {fileID: 2100000, guid: ac1d8120c6f27ca459ef8b29c4af87ca, type: 2}
+  shadowMaskOverrideMaterial: {fileID: 2100000, guid: afc44893079613d48831a42adef0ecad, type: 2}
   outlineBlitMaterial: {fileID: 2100000, guid: 4088feeeea6ea8f4bb9f91a5d905be39, type: 2}
   shadowDataOverrideMaterial: {fileID: 2100000, guid: f80923eea404b00419849502b2cdf0c7, type: 2}
   shadowOutlineBlitMaterial: {fileID: 2100000, guid: e48ce97ae96af254599f8e1e4808825e, type: 2}
@@ -28,6 +33,7 @@ MonoBehaviour:
     depthThreshold: 0.005
     normalThreshold: 0.005
     colorThreshold: 0.005
+  OrthoPaddingMultiplier: {x: 0, y: 0, z: 0.4}
   shadowMapResolution: 2048
   postProcessDrawMaterial: {fileID: 2100000, guid: 1c77f655f99ca6e44a546831a4287b65, type: 2}
 --- !u!114 &11400000

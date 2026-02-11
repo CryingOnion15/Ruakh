@@ -45,6 +45,9 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
     RenderPassEvent outlinePassEvent = RenderPassEvent.AfterRenderingShadows;
 
     [SerializeField]
+    RenderPassEvent maskEvent = RenderPassEvent.AfterRenderingOpaques;
+
+    [SerializeField]
     RenderPassEvent postProcessEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
     [Header("Outline & Shadow Texture Fields")]
@@ -52,7 +55,13 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
     LayerMask outlineMask;
 
     [SerializeField]
+    LayerMask allOpaqueMask;
+
+    [SerializeField]
     Material dataOverrideMaterial;
+
+    [SerializeField]
+    Material shadowMaskOverrideMaterial;
 
     [SerializeField]
     Material outlineBlitMaterial;
@@ -67,6 +76,9 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
     EdgeDetectionSettings outlineSettings;
 
     [SerializeField]
+    Vector3 OrthoPaddingMultiplier = new Vector3(0.02f, 0.02f, 0.02f);
+
+    [SerializeField]
     int shadowMapResolution = 1024;
 
     [Header("Post Process Fields")]
@@ -79,6 +91,7 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
     StainedGlassOutlineTexturePass outlinePass;
 
     protected StainedShadowRenderPass shadowRenderPass;
+    protected StainedShadowMaskPass shadowMaskPass;
     protected StainedShadowOutlineRenderPass shadowOutlinePass;
 
     StainedGlassPostProcessPass postProcessPass;
@@ -91,6 +104,7 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
         postProcessPass = new StainedGlassPostProcessPass();
         outlinePass = new StainedGlassOutlineTexturePass();
         shadowRenderPass = new StainedShadowRenderPass();
+        shadowMaskPass = new StainedShadowMaskPass();
         shadowOutlinePass = new StainedShadowOutlineRenderPass();
 
         // Set Pass Events.
@@ -98,6 +112,9 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
         outlinePass.renderPassEvent = outlinePassEvent;
         shadowRenderPass.renderPassEvent = outlinePassEvent;
         shadowOutlinePass.renderPassEvent = outlinePassEvent;
+
+        shadowMaskPass.renderPassEvent = maskEvent;
+
         postProcessPass.renderPassEvent = postProcessEvent;
     }
 
@@ -118,6 +135,7 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
             && postProcessDrawMaterial != null
             && shadowOutlineBlitMaterial != null
             && shadowDataOverrideMaterial != null
+            && shadowMaskOverrideMaterial != null
         )
         {
             // Setup passed with needed information.
@@ -128,13 +146,15 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
                 RenderSettings.sun,
                 outlineMask,
                 shadowDataOverrideMaterial,
-                shadowMapResolution
+                shadowMapResolution,
+                OrthoPaddingMultiplier
             );
             shadowOutlinePass.Setup(
                 shadowOutlineBlitMaterial,
                 outlineSettings,
                 shadowMapResolution
             );
+            shadowMaskPass.Setup(allOpaqueMask, shadowMaskOverrideMaterial);
 
             //Queue Camera outline passes.
             renderer.EnqueuePass(texturePass);
@@ -142,8 +162,11 @@ public class StainedGlassRenderFeature : ScriptableRendererFeature
 
             // Queue Shadow outline passes.
             renderer.EnqueuePass(shadowRenderPass);
-            //renderer.EnqueuePass(shadowOutlinePass);
 
+            // Queue shadow mask pass.
+            renderer.EnqueuePass(shadowMaskPass);
+
+            // Queue post process draw pass.
             postProcessPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             // Queue Post Process Pass.
             renderer.EnqueuePass(postProcessPass);
