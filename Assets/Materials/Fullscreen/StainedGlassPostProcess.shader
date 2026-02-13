@@ -69,61 +69,9 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 float4 screen = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
                 float4 shadow = SAMPLE_TEXTURE2D(_StainedShadowMask, sampler_StainedShadowMask, IN.uv);
 
-                return screen + shadow;
+                return shadow;
             }
             ENDHLSL
         }
     }
 }
-
-// // Get the depth at the pixel.
-                // float depth = SampleSceneDepth(IN.uv);
-                // float linearDepth = Linear01Depth(depth, _ZBufferParams);
-
-                // // Get the scene color.
-                // float4 sceneColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
-
-                // // Get the world point.
-                // float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
-                // float3 normal = ReconstructNormal(world);
-
-                // // Get the shadow color.
-                // float4 shadowColor = SampleStainedShadowColor(world);
-
-                // // Exclude skybox pixels
-                // float isValidReciever = 1.0 - step(.999, linearDepth);
-
-                // // Outline Tests
-                // float screenOutlineTest = SCREEN_POS_OUTLINE_TEST(IN.uv);
-                // //float shadowOutlineTest = 1.0 - LIGHT_SPACE_OUTLINE_TEST(world);
-
-                // // Shadow test: 1 = shadowed, 0 = lit
-                // float shadowTest = SHADOW_TEST(world, normal) * isValidReciever;
-
-                // // Override scene color with shadow color.
-                // sceneColor = lerp(sceneColor, shadowColor, shadowTest);
-
-                // // Enforce outline color and draw the rest.
-                // //sceneColor = lerp(sceneColor, _OutlineColor, screenOutlineTest);
-
-                // //Debug Cascades
-                // uint cIndex = GetCascadeIndex(world);
-
-                // float4 color;
-
-                // if(cIndex == 0) {
-                //     color = float4(1.0,0.0,1.0,1.0);
-                // } else if(cIndex == 1) {
-                //     color = float4(0.0,1.0,0.0,1.0);
-                // } else if(cIndex == 2) {
-                //     color = float4(0.0,0.0,1.0,1.0);
-                // } else {
-                //     color = float4(1.0,1.0,0.0,1.0);
-                // }
-
-                // float currentDepth = GetLightSpaceDepth(world, cIndex);
-                
-                // //return abs(ddx(currentDepth)) * 100;
-                // return float4(shadowTest, 0.0, 0.0, 1.0);
-                // return lerp(color, sceneColor, 0.5);
-                // return sceneColor;

@@ -45,10 +45,8 @@ Shader "Unlit/BasicUnlit"
             {
                 float4 vertex : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float3 normalWS : TEXCOORD1;
-                float4 shadowSpace : TEXCOORD2;
-                float4 posWS : TEXCOORD3;
-                uint casIndex : TEXCOORD4;
+                float3 normalWS : TEXCOORD1; 
+                float4 posWS : TEXCOORD2;
             };
 
             v2f vert (appdata v)
@@ -57,8 +55,6 @@ Shader "Unlit/BasicUnlit"
                 o.vertex = TransformObjectToHClip(v.vertex);
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
                 o.posWS = float4(TransformObjectToWorld(v.vertex), 1.0);
-                o.casIndex = GetCascadeIndex(float3(o.posWS.xyz));
-                o.shadowSpace = mul(_StainedShadowVPMatrix[o.casIndex], o.posWS);
                 o.uv = v.uv;
                 return o;
             }
@@ -85,8 +81,10 @@ Shader "Unlit/BasicUnlit"
 
                 OUT.lum = OUT.color.r * 0.3 + OUT.color.g * 0.59 + OUT.color.b * 0.11;
 
+                uint casIndex = GetCascadeIndex(i.posWS.xyz);
+
                 // Light-space view depth (before projection)
-                float4 lightViewPos = mul(_StainedShadowViewMatrix[i.casIndex], i.posWS);
+                float4 lightViewPos = mul(_StainedShadowViewMatrix[casIndex], i.posWS);
                 float lightViewDepth = lightViewPos.z;
 
                 // Normalize manually using your light near/far

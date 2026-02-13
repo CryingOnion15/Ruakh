@@ -277,98 +277,90 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             near = math.min(near, viewSpace.z);
         }
 
-        return Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
+        float depthCenter = (far + near) * 0.5f;
+        Vector3 lightPos = center - lightDirection * depthCenter;
+        return Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
     }
 
     protected void UpdateLightDataForCascades(CascadeData cData)
     {
+        Vector3 lightDirection = dirLight.transform.forward;
+
         for (int i = 0; i < cData.CascadeCount; i++)
         {
-            Vector3[] casCorners = cData.cascadeCorners[i];
+            Vector3[] corners = cData.cascadeCorners[i];
 
-            // Find the center of the frustum
+            // 1️⃣ Compute center of the cascade frustum
             Vector3 center = Vector3.zero;
-            for (int j = 0; j < casCorners.Length; j++)
-            {
-                center += casCorners[j];
-            }
-            center /= casCorners.Length;
+            for (int j = 0; j < corners.Length; j++)
+                center += corners[j];
+            center /= corners.Length;
 
-            // Light Direction;
-            Vector3 lightDirection = dirLight.transform.forward;
-
-            // Create a rotation quaternion
-            Vector3 up =
-                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
-                    ? Vector3.right
-                    : Vector3.up;
-
+            // 2️⃣ Compute light rotation
+            Vector3 up = Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f ? Vector3.right : Vector3.up;
             Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
-            // Find the depth range.
-            Matrix4x4 view = GenerateViewMatrix(lightRot, center, casCorners);
+            // 3️⃣ Build temporary light view matrix
+            Matrix4x4 tempView = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
+
+            // 4️⃣ Find bounds in light space
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
             float b = float.PositiveInfinity;
             float t = float.NegativeInfinity;
-            float far = float.NegativeInfinity;
             float near = float.PositiveInfinity;
+            float far = float.NegativeInfinity;
 
-            for (int j = 0; j < casCorners.Length; j++)
+            for (int j = 0; j < corners.Length; j++)
             {
-                Vector3 viewSpace = view.MultiplyPoint3x4(casCorners[j]);
-                t = math.max(t, viewSpace.y);
-                b = math.min(b, viewSpace.y);
-                l = math.min(l, viewSpace.x);
-                r = math.max(r, viewSpace.x);
-                far = math.max(far, viewSpace.z);
-                near = math.min(near, viewSpace.z);
+                Vector3 v = tempView.MultiplyPoint3x4(corners[j]);
+                l = Mathf.Min(l, v.x);
+                r = Mathf.Max(r, v.x);
+                b = Mathf.Min(b, v.y);
+                t = Mathf.Max(t, v.y);
+                near = Mathf.Min(near, v.z);
+                far = Mathf.Max(far, v.z);
             }
 
-            // Addin the padding.
-            float xPadding = (r - l) * orthoPadding.x;
-            float yPadding = (t - b) * orthoPadding.y;
-            float zPadding = (far - near) * orthoPadding.z;
+            // 5️⃣ Add small padding
+            float xPad = (r - l) * orthoPadding.x;
+            float yPad = (t - b) * orthoPadding.y;
+            float zPad = (far - near) * orthoPadding.z;
 
-            float angleBias = Vector3.Dot(lightDirection, Vector3.up);
-            float dynamicPadding = zPadding * Mathf.Sign(angleBias);
+            l -= xPad; r += xPad;
+            b -= yPad; t += yPad;
+            near -= zPad; far += zPad;
 
-            l -= xPadding;
-            r += xPadding;
-            b -= yPadding;
-            t += yPadding;
-            far += dynamicPadding;
+            // 6️⃣ Optional: snap to texel to reduce shimmering
+            float texelSizeX = (r - l) / ShadowMapResolution;
+            float texelSizeY = (t - b) / ShadowMapResolution;
 
-            //Texel Snapping to the nearest whole texel
-            // float width = r - l;
-            // float height = t - b;
-            // float texelSizeX = width / ShadowMapResolution;
-            // float texelSizeY = height / ShadowMapResolution;
+            l = Mathf.Floor(l / texelSizeX) * texelSizeX;
+            r = Mathf.Ceil(r / texelSizeX) * texelSizeX;
+            b = Mathf.Floor(b / texelSizeY) * texelSizeY;
+            t = Mathf.Ceil(t / texelSizeY) * texelSizeY;
 
-            // // Snap L/R/B/T to texels
-            // l = Mathf.Floor(l / texelSizeX) * texelSizeX;
-            // r = Mathf.Ceil(r / texelSizeX) * texelSizeX;
-            // b = Mathf.Floor(b / texelSizeY) * texelSizeY;
-            // t = Mathf.Ceil(t / texelSizeY) * texelSizeY;
+            // 7️⃣ Recompute light position based on the depth center
+            float depthCenter = (near + far) * 0.5f;
+            Vector3 lightPos = center - lightDirection * depthCenter;
 
-            // float depthCenter = (far + near) * .5f;
-            // Vector3 lightPos = center - lightDirection * depthCenter;
+            Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
+
+            // 8️⃣ Create orthographic projection
+            Matrix4x4 proj = GL.GetGPUProjectionMatrix(Matrix4x4.Ortho(l, r, b, t, near, far), true);
+
+            // 9️⃣ Store matrices
             cData.cascadeViewMatricies[i] = view;
+            cData.cascadeProjMatricies[i] = proj;
+            cData.cascadeViewProjMatricies[i] = proj * view;
 
-            // Create the Ortho Project Matrix from the AABB
-            cData.cascadeProjMatricies[i] = GL.GetGPUProjectionMatrix(
-                Matrix4x4.Ortho(l, r, b, t, near, far),
-                true
-            );
-
-            cData.cascadeViewProjMatricies[i] =
-                cData.cascadeProjMatricies[i] * cData.cascadeViewMatricies[i];
-
-            // Set Shader Params for the cascade.
-            // x = near, y = far, z = 1 / (far - near), w = unused
+            // 10️⃣ Set shader cascade params
             cData.ShadowParams[i] = new Vector4(near, far, 1f / (far - near), 0f);
+
+            //Debug.Log($"Cascade {i}: L={l} R={r} B={b} T={t} Near={near} Far={far}");
         }
     }
+
 
     /// <summary>
     /// // Updates frustum corners array for the current frame.
