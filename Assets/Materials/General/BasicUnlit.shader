@@ -26,12 +26,6 @@ Shader "Unlit/BasicUnlit"
             SAMPLER(sampler_BaseMap);
             float4 _BaseColor;
 
-            // Global Variables
-            //CBUFFER_START(StainedShadowMatrices)
-                //float4x4 _StainedShadowVPMatrix[4];
-                //float4x4 _StainedShadowViewMatrix[4];
-            //CBUFFER_END
-
             float4 _GlobalShadowParams;
 
             struct appdata
@@ -47,6 +41,7 @@ Shader "Unlit/BasicUnlit"
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1; 
                 float4 posWS : TEXCOORD2;
+                float cascadeIndex : TEXCOORD3;
             };
 
             v2f vert (appdata v)
@@ -55,6 +50,7 @@ Shader "Unlit/BasicUnlit"
                 o.vertex = TransformObjectToHClip(v.vertex);
                 o.normalWS = TransformObjectToWorldNormal(v.normal);
                 o.posWS = float4(TransformObjectToWorld(v.vertex), 1.0);
+                o.cascadeIndex = GetCascadeIndex(o.posWS.xyz);
                 o.uv = v.uv;
                 return o;
             }
@@ -64,34 +60,18 @@ Shader "Unlit/BasicUnlit"
             struct FragmentOutput
             {
                 float4 color  : SV_Target0;
-                float depth : SV_Target1;
-                float3 normal   : SV_Target2;
-                float lum : SV_Target3;
+                float lightDepth : SV_Target1;
+                //float depth : SV_Target1;
+                //float3 normal   : SV_Target1;
+                //float lum : SV_Target2;
             };
 
-            FragmentOutput frag (v2f i)
+            FragmentOutput frag(v2f i)
             {
                 FragmentOutput OUT;
+                OUT.color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv) * _BaseColor;
 
-                float4 baseTex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
-                OUT.color = baseTex * _BaseColor;
-
-                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, i.normalWS);
-                OUT.normal = normalVS * 0.5 + 0.5;
-
-                OUT.lum = OUT.color.r * 0.3 + OUT.color.g * 0.59 + OUT.color.b * 0.11;
-
-                uint casIndex = GetCascadeIndex(i.posWS.xyz);
-
-                // Light-space view depth (before projection)
-                float4 lightViewPos = mul(_StainedShadowViewMatrix[casIndex], i.posWS);
-                float lightViewDepth = lightViewPos.z;
-
-                // Normalize manually using your light near/far
-                OUT.depth = (lightViewDepth - _GlobalShadowParams.x) / (_GlobalShadowParams.y - _GlobalShadowParams.x);
-
-                // Clamp to valid range
-                OUT.depth = saturate(OUT.depth);
+                OUT.lightDepth = GetLightSpaceDepthBlend(i.posWS.xyz, i.cascadeIndex);
 
                 return OUT;
             }

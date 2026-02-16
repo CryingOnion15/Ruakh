@@ -14,7 +14,7 @@ Shader "Hidden/StainedShadowMaskOverride"
 
             ZWrite Off
             ZTest LEqual
-            Cull Back
+            Cull Off
 
             HLSLPROGRAM
             #pragma vertex vert

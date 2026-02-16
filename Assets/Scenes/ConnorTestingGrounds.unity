@@ -145,11 +145,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.9
+      value: 6.66
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1
+      value: -0.81
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4316e57840e4bfd44bff2e460cd51ecf, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1304,13 +1304,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 732852295}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.19764647, y: 0.010265544, z: -0.0020698966, w: -0.9802174}
+  m_LocalRotation: {x: 0.46406913, y: 0, z: 0, w: 0.885799}
   m_LocalPosition: {x: 0, y: 21.6, z: -56.07}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 22.8, y: 358.8, z: 0}
+  m_LocalEulerAnglesHint: {x: 55.3, y: 0, z: 0}
 --- !u!114 &732852298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1562,7 +1562,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &970133324
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1576,7 +1576,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_RenderShadows: 0
-  m_RequiresDepthTextureOption: 2
+  m_RequiresDepthTextureOption: 1
   m_RequiresOpaqueTextureOption: 1
   m_CameraType: 0
   m_Cameras: []
@@ -1768,14 +1768,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 987173581}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.30070576, y: 0, z: 0, w: 0.953717}
+  m_LocalRotation: {x: 0.3518416, y: 0, z: 0, w: 0.9360596}
   m_LocalPosition: {x: 0.31, y: 23.93, z: -59.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1928115264}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 35, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 41.2, y: 0, z: 0}
 --- !u!114 &987173585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1789,7 +1789,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_RenderShadows: 0
-  m_RequiresDepthTextureOption: 2
+  m_RequiresDepthTextureOption: 1
   m_RequiresOpaqueTextureOption: 1
   m_CameraType: 0
   m_Cameras: []

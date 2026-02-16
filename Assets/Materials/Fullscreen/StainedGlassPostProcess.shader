@@ -9,7 +9,6 @@ Shader "Fullscreen/StainedGlassPostProcess"
             ZWrite Off
             ZTest Always
             Cull Off
-            //Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -19,7 +18,6 @@ Shader "Fullscreen/StainedGlassPostProcess"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             #include "Assets/Materials/General/Includes/StainedOutline.hlsl"
             #include "Assets/Materials/General/Includes/StainedShadow.hlsl"
-            
 
             // Textures
             TEXTURE2D(_CameraOpaqueTexture);
@@ -31,16 +29,10 @@ Shader "Fullscreen/StainedGlassPostProcess"
             // Variables
             float4 _OutlineColor;
 
-            struct attributes
-            {
-                float4 pos : POSITION;
-                float2 uv : TEXCOORD0;
-            };
-
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float2 uv : TEXCOORD0;
+                float2 uv  : TEXCOORD0;
             };
 
             v2f vert(uint vertexID : SV_VertexID)
@@ -52,25 +44,28 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 return o;
             }
 
-            float3 ReconstructNormal(float3 world) {
+            float3 ReconstructNormal(float3 world)
+            {
                 float3 dx = float3(ddx(world.x), ddx(world.y), ddx(world.z));
                 float3 dy = float3(ddy(world.x), ddy(world.y), ddy(world.z));
-
                 return normalize(cross(dy, dx));
             }
 
-            float4 frag (v2f IN) : SV_Target
+            float4 frag(v2f IN) : SV_Target
             {
-                // Revers the uv if is starts from the top.
                 #if UNITY_UV_STARTS_AT_TOP
                     IN.uv.y = 1.0 - IN.uv.y;
                 #endif
 
+                // --- Sample the opaque screen color ---
                 float4 screen = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, IN.uv);
+
+                // --- Sample shadow mask ---
                 float4 shadow = SAMPLE_TEXTURE2D(_StainedShadowMask, sampler_StainedShadowMask, IN.uv);
 
                 return shadow;
             }
+
             ENDHLSL
         }
     }

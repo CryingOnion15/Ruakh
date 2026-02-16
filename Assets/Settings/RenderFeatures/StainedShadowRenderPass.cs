@@ -1,5 +1,7 @@
+using NUnit.Framework.Internal;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Experimental.AI;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -135,7 +137,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             );
             builder.SetGlobalTextureAfterPass(
                 cascadeDepthTexture,
-                Shader.PropertyToID("_StainedShadowDepthMap")
+                Shader.PropertyToID("_StainedShadowDepthTexture")
             );
             builder.AllowGlobalStateModification(true);
             builder.AllowPassCulling(false);
@@ -239,16 +241,14 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             clearColor = Color.clear,
         };
 
-        // Create the depth desc.
         TextureDesc depthDesc = new TextureDesc(ShadowMapResolution, ShadowMapResolution)
         {
-            colorFormat = GraphicsFormat.R32_SFloat,
-            depthBufferBits = DepthBits.None,
+            format = GraphicsFormat.R32_SFloat,
             dimension = TextureDimension.Tex2DArray,
-            name = "_StainedShadowDepthMap",
+            name = "_StainedShadowDepthTexture",
             clearBuffer = true,
             slices = 4,
-            clearColor = Color.red,
+            clearColor = Color.clear,
         };
 
         cascadeColorTexture = rg.CreateTexture(colorDesc);
@@ -284,7 +284,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     protected void UpdateLightDataForCascades(CascadeData cData)
     {
-        Vector3 lightDirection = dirLight.transform.forward;
+        //Vector3 worldLightDirection = dirLight.transform.forward;
+        lightDirection = dirLight.transform.forward;
 
         for (int i = 0; i < cData.CascadeCount; i++)
         {
@@ -297,13 +298,15 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             center /= corners.Length;
 
             // 2️⃣ Compute light rotation
-            Vector3 up = Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f ? Vector3.right : Vector3.up;
+            Vector3 up =
+                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
+                    ? Vector3.right
+                    : Vector3.up;
             Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
-            // 3️⃣ Build temporary light view matrix
+            // 3️⃣ Temporary view to calculate bounds
             Matrix4x4 tempView = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
 
-            // 4️⃣ Find bounds in light space
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
             float b = float.PositiveInfinity;
@@ -322,45 +325,53 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 far = Mathf.Max(far, v.z);
             }
 
-            // 5️⃣ Add small padding
+            // 4️⃣ Apply small orthographic padding
             float xPad = (r - l) * orthoPadding.x;
             float yPad = (t - b) * orthoPadding.y;
             float zPad = (far - near) * orthoPadding.z;
 
-            l -= xPad; r += xPad;
-            b -= yPad; t += yPad;
-            near -= zPad; far += zPad;
+            l -= xPad;
+            r += xPad;
+            b -= yPad;
+            t += yPad;
+            near -= zPad;
+            far += zPad;
 
-            // 6️⃣ Optional: snap to texel to reduce shimmering
+            // 5️⃣ Compute depth center AFTER padding for correct view position
+            float depthCenter = (near + far) * 0.5f;
+            Vector3 lightPos = center - lightDirection * depthCenter;
+
+            // 6️⃣ Create final view matrix
+            Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
+
+            // 7️⃣ Snap bounds to texel grid to reduce shimmering
             float texelSizeX = (r - l) / ShadowMapResolution;
             float texelSizeY = (t - b) / ShadowMapResolution;
-
             l = Mathf.Floor(l / texelSizeX) * texelSizeX;
             r = Mathf.Ceil(r / texelSizeX) * texelSizeX;
             b = Mathf.Floor(b / texelSizeY) * texelSizeY;
             t = Mathf.Ceil(t / texelSizeY) * texelSizeY;
 
-            // 7️⃣ Recompute light position based on the depth center
-            float depthCenter = (near + far) * 0.5f;
-            Vector3 lightPos = center - lightDirection * depthCenter;
-
-            Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
-
-            // 8️⃣ Create orthographic projection
-            Matrix4x4 proj = GL.GetGPUProjectionMatrix(Matrix4x4.Ortho(l, r, b, t, near, far), true);
+            // 8️⃣ Create orthographic projection matrix (DirectX 0=near,1=far)
+            Matrix4x4 proj = GL.GetGPUProjectionMatrix(
+                Matrix4x4.Ortho(l, r, b, t, near, far),
+                true
+            );
 
             // 9️⃣ Store matrices
             cData.cascadeViewMatricies[i] = view;
             cData.cascadeProjMatricies[i] = proj;
             cData.cascadeViewProjMatricies[i] = proj * view;
 
-            // 10️⃣ Set shader cascade params
+            // 1️⃣0️⃣ Set shader cascade params
             cData.ShadowParams[i] = new Vector4(near, far, 1f / (far - near), 0f);
 
-            //Debug.Log($"Cascade {i}: L={l} R={r} B={b} T={t} Near={near} Far={far}");
+            // // Debug
+            // Debug.Log(
+            //     $"Cascade {i}: L={l} R={r} B={b} T={t} Near={near} Far={far} LightPos={lightPos}"
+            // );
         }
     }
-
 
     /// <summary>
     /// // Updates frustum corners array for the current frame.
