@@ -146,9 +146,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 {
                     context.cmd.SetViewProjectionMatrices(data.viewMat, data.projMat);
 
-                    // Set Bias to prevent Shadow Acne
-                    context.cmd.SetGlobalDepthBias(0f, 0f);
-
                     // Draw all geometry based on the renderer list.
                     context.cmd.DrawRendererList(data.rendererListHandle);
 
@@ -166,40 +163,8 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     protected void SetShaderVariables(CascadeData cData, Camera camera)
     {
-        // --- Set Camera Params ---
-        // Build matrix manually
-        Quaternion lightRot = Quaternion.LookRotation(
-            dirLight.transform.forward,
-            dirLight.transform.up
-        );
-
-        // Find the depth range.
-        Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
-        float l = float.PositiveInfinity;
-        float r = float.NegativeInfinity;
-        float b = float.PositiveInfinity;
-        float t = float.NegativeInfinity;
-        float far = float.NegativeInfinity;
-        float near = float.PositiveInfinity;
-
-        for (int i = 0; i < corners.Length; i++)
-        {
-            Vector3 viewSpace = tempView.MultiplyPoint3x4(corners[i]);
-            t = math.max(t, viewSpace.y);
-            b = math.min(b, viewSpace.y);
-            l = math.min(l, viewSpace.x);
-            r = math.max(r, viewSpace.x);
-            far = math.max(far, viewSpace.z);
-            near = math.min(near, viewSpace.z);
-        }
-
         // Set Global Shader Params Vector.
         Shader.SetGlobalVectorArray("_ShadowParams", this.cData.ShadowParams);
-        // x = near, y = far, z = 1 / Far - Near, w = near / far - near
-        Shader.SetGlobalVector(
-            "_GlobalShadowParams",
-            new Vector4(near, far, 1 / (far - near), near / (far - near))
-        );
 
         // -- Set Matrices --
         Shader.SetGlobalMatrixArray("_StainedShadowViewMatrix", cData.cascadeViewMatricies);
@@ -255,33 +220,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         cascadeDepthTexture = rg.CreateTexture(depthDesc);
     }
 
-    protected Matrix4x4 GenerateViewMatrix(Quaternion lightRot, Vector3 center, Vector3[] corners)
-    {
-        // Find the depth range.
-        Matrix4x4 tempView = Matrix4x4.TRS(Vector3.zero, lightRot, Vector3.one).inverse;
-        float l = float.PositiveInfinity;
-        float r = float.NegativeInfinity;
-        float b = float.PositiveInfinity;
-        float t = float.NegativeInfinity;
-        float far = float.NegativeInfinity;
-        float near = float.PositiveInfinity;
-
-        for (int i = 0; i < corners.Length; i++)
-        {
-            Vector3 viewSpace = tempView.MultiplyPoint3x4(corners[i]);
-            t = math.max(t, viewSpace.y);
-            b = math.min(b, viewSpace.y);
-            l = math.min(l, viewSpace.x);
-            r = math.max(r, viewSpace.x);
-            far = math.max(far, viewSpace.z);
-            near = math.min(near, viewSpace.z);
-        }
-
-        float depthCenter = (far + near) * 0.5f;
-        Vector3 lightPos = center - lightDirection * depthCenter;
-        return Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
-    }
-
     protected void UpdateLightDataForCascades(CascadeData cData)
     {
         //Vector3 worldLightDirection = dirLight.transform.forward;
@@ -302,10 +240,11 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
                     ? Vector3.right
                     : Vector3.up;
-            Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
+            //Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
 
-            // 3️⃣ Temporary view to calculate bounds
-            Matrix4x4 tempView = Matrix4x4.TRS(center, lightRot, Vector3.one).inverse;
+            Matrix4x4 tempView = Matrix4x4
+                .LookAt(center - lightDirection * 10f, center, up)
+                .inverse;
 
             float l = float.PositiveInfinity;
             float r = float.NegativeInfinity;
@@ -342,7 +281,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Vector3 lightPos = center - lightDirection * depthCenter;
 
             // 6️⃣ Create final view matrix
-            Matrix4x4 view = Matrix4x4.TRS(lightPos, lightRot, Vector3.one).inverse;
+            Matrix4x4 view = Matrix4x4.LookAt(lightPos, center, up).inverse;
 
             // 7️⃣ Snap bounds to texel grid to reduce shimmering
             float texelSizeX = (r - l) / ShadowMapResolution;
@@ -355,7 +294,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // 8️⃣ Create orthographic projection matrix (DirectX 0=near,1=far)
             Matrix4x4 proj = GL.GetGPUProjectionMatrix(
                 Matrix4x4.Ortho(l, r, b, t, near, far),
-                true
+                false
             );
 
             // 9️⃣ Store matrices
@@ -365,11 +304,6 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
             // 1️⃣0️⃣ Set shader cascade params
             cData.ShadowParams[i] = new Vector4(near, far, 1f / (far - near), 0f);
-
-            // // Debug
-            // Debug.Log(
-            //     $"Cascade {i}: L={l} R={r} B={b} T={t} Near={near} Far={far} LightPos={lightPos}"
-            // );
         }
     }
 

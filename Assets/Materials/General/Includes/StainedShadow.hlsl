@@ -138,8 +138,9 @@ float GetBias(float3 normal, uint cascadeIndex)
 {
     float3 L = normalize(_LightDirection);
     float slope = max(0.0, 1.0 - dot(normal,L)); // safe slope
-    float bias = 0.005 + slope * 0.01 + cascadeIndex * 0.002; // tweak in shadow map units
-    return bias;
+    float constantBias = .002;
+    float slopeBias = 0.005 + slope * 0.01 + cascadeIndex * 0.25; // tweak in shadow map units
+    return constantBias + slopeBias;
 }
 
 

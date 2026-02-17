@@ -26,8 +26,6 @@ Shader "Unlit/BasicUnlit"
             SAMPLER(sampler_BaseMap);
             float4 _BaseColor;
 
-            float4 _GlobalShadowParams;
-
             struct appdata
             {
                 float4 vertex : POSITION;
