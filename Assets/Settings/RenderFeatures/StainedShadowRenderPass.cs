@@ -1,7 +1,5 @@
-using NUnit.Framework.Internal;
-using Unity.Mathematics;
+using System;
 using UnityEngine;
-using UnityEngine.Experimental.AI;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -92,7 +90,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
         UpdateFrustumCorners(camera, corners);
         GenerateCascadeCorners(camera, cData);
-        UpdateLightDataForCascades(cData);
+        UpdateLightDataForCascades(camera, cData);
 
         for (int i = 0; i < 4; i++)
         {
@@ -220,89 +218,107 @@ public class StainedShadowRenderPass : ScriptableRenderPass
         cascadeDepthTexture = rg.CreateTexture(depthDesc);
     }
 
-    protected void UpdateLightDataForCascades(CascadeData cData)
+    protected void UpdateLightDataForCascades(Camera camera, CascadeData cData)
     {
-        //Vector3 worldLightDirection = dirLight.transform.forward;
         lightDirection = dirLight.transform.forward;
+
+        // Stable up vector (avoid gimbal flip)
+        Vector3 up =
+            Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f ? Vector3.right : Vector3.up;
 
         for (int i = 0; i < cData.CascadeCount; i++)
         {
             Vector3[] corners = cData.cascadeCorners[i];
+            float maxY = float.NegativeInfinity;
+            //float minZ = float
 
-            // 1️⃣ Compute center of the cascade frustum
-            Vector3 center = Vector3.zero;
-            for (int j = 0; j < corners.Length; j++)
-                center += corners[j];
-            center /= corners.Length;
+            // calculate cascade center.
+            // Vector3 center = Vector3.zero;
+            // for (int j = 0; j < 8; j++)
+            // {
+            //     center += corners[j];
+            //     maxY = Math.Max(maxY, corners[j].y);
+            // }
+            // center /= 8;
 
-            // 2️⃣ Compute light rotation
-            Vector3 up =
-                Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f
-                    ? Vector3.right
-                    : Vector3.up;
-            //Quaternion lightRot = Quaternion.LookRotation(lightDirection, up);
+            Vector3 lightPosition =
+                camera.transform.position
+                + camera.transform.forward
+                    * (
+                        Mathf.Lerp(
+                            camera.nearClipPlane,
+                            camera.farClipPlane,
+                            cData.CascadeBounds[i]
+                        ) - 10f
+                    );
+            lightPosition.y = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
+            //Vector3 lightPosition = camera.transform.forward + ;
 
-            Matrix4x4 tempView = Matrix4x4
-                .LookAt(center - lightDirection * 10f, center, up)
-                .inverse;
+            // Generate view Matrix
+            Matrix4x4 view = Matrix4x4.LookAt(
+                lightPosition,
+                lightPosition + lightDirection,
+                dirLight.transform.up
+            );
 
-            float l = float.PositiveInfinity;
-            float r = float.NegativeInfinity;
-            float b = float.PositiveInfinity;
-            float t = float.NegativeInfinity;
-            float near = float.PositiveInfinity;
-            float far = float.NegativeInfinity;
+            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
 
             for (int j = 0; j < corners.Length; j++)
             {
-                Vector3 v = tempView.MultiplyPoint3x4(corners[j]);
-                l = Mathf.Min(l, v.x);
-                r = Mathf.Max(r, v.x);
-                b = Mathf.Min(b, v.y);
-                t = Mathf.Max(t, v.y);
-                near = Mathf.Min(near, v.z);
-                far = Mathf.Max(far, v.z);
+                Vector3 v = view.MultiplyPoint3x4(corners[j]);
+
+                min = Vector3.Min(min, v);
+                max = Vector3.Max(max, v);
             }
 
-            // 4️⃣ Apply small orthographic padding
-            float xPad = (r - l) * orthoPadding.x;
-            float yPad = (t - b) * orthoPadding.y;
-            float zPad = (far - near) * orthoPadding.z;
+            float l = min.x;
+            float r = max.x;
+            float b = min.y;
+            float t = max.y;
+            float near = min.z;
+            float far = max.z;
 
-            l -= xPad;
-            r += xPad;
-            b -= yPad;
-            t += yPad;
-            near -= zPad;
-            far += zPad;
+            // // --------------------------------------------------
+            // // Padding
+            // // --------------------------------------------------
+            // float xPad = (r - l) * orthoPadding.x;
+            // float yPad = (t - b) * orthoPadding.y;
+            // float zPad = (far - near) * orthoPadding.z;
 
-            // 5️⃣ Compute depth center AFTER padding for correct view position
-            float depthCenter = (near + far) * 0.5f;
-            Vector3 lightPos = center - lightDirection * depthCenter;
+            // l -= xPad;
+            // r += xPad;
+            // b -= yPad;
+            // t += yPad;
+            // near -= zPad;
+            // far += zPad;
 
-            // 6️⃣ Create final view matrix
-            Matrix4x4 view = Matrix4x4.LookAt(lightPos, center, up).inverse;
-
-            // 7️⃣ Snap bounds to texel grid to reduce shimmering
+            // --------------------------------------------------
+            // Texel snapping (reduces shimmer)
+            // --------------------------------------------------
             float texelSizeX = (r - l) / ShadowMapResolution;
             float texelSizeY = (t - b) / ShadowMapResolution;
+
             l = Mathf.Floor(l / texelSizeX) * texelSizeX;
             r = Mathf.Ceil(r / texelSizeX) * texelSizeX;
             b = Mathf.Floor(b / texelSizeY) * texelSizeY;
             t = Mathf.Ceil(t / texelSizeY) * texelSizeY;
 
-            // 8️⃣ Create orthographic projection matrix (DirectX 0=near,1=far)
+            // --------------------------------------------------
+            // Orthographic Projection
+            // --------------------------------------------------
             Matrix4x4 proj = GL.GetGPUProjectionMatrix(
                 Matrix4x4.Ortho(l, r, b, t, near, far),
-                false
+                true
             );
 
-            // 9️⃣ Store matrices
+            // --------------------------------------------------
+            // Store results
+            // --------------------------------------------------
             cData.cascadeViewMatricies[i] = view;
             cData.cascadeProjMatricies[i] = proj;
             cData.cascadeViewProjMatricies[i] = proj * view;
 
-            // 1️⃣0️⃣ Set shader cascade params
             cData.ShadowParams[i] = new Vector4(near, far, 1f / (far - near), 0f);
         }
     }

@@ -138,7 +138,7 @@ float GetBias(float3 normal, uint cascadeIndex)
 {
     float3 L = normalize(_LightDirection);
     float slope = max(0.0, 1.0 - dot(normal,L)); // safe slope
-    float constantBias = .002;
+    float constantBias = 2.0;
     float slopeBias = 0.005 + slope * 0.01 + cascadeIndex * 0.25; // tweak in shadow map units
     return constantBias + slopeBias;
 }
@@ -156,7 +156,6 @@ float SHADOW_TEST(float3 worldPos, float3 normal)
     float currentDepth = GetLightSpaceDepthBlend(worldPos, cascadeIndex);
 
     float shadow = 0.0;
-    float totalWeight = 0.0;
 
     // Poisson disk scale based on cascade
     float scale = 1.0 + cascadeIndex * 0.5; // near cascades smaller, far cascades wider
@@ -173,14 +172,10 @@ float SHADOW_TEST(float3 worldPos, float3 normal)
         // Sample depth with cascade blending
         float sampledDepth = SampleShadowDepthBlend(worldPos, cascadeIndex, offset);
 
-        // Optional: simple weight based on distance from center
-        float weight = 1.0; // could use gaussian: weight = exp(-length(offset*10.0)^2);
-
-        shadow += step(currentDepth, sampledDepth + bias + 0.0001) * weight;
-        totalWeight += weight;
+        shadow += step(currentDepth, sampledDepth + bias);
     }
 
-    return shadow / totalWeight;
+    return shadow / 8.0;
 }
 
 
