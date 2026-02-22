@@ -284,14 +284,14 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // // --------------------------------------------------
             // float xPad = (r - l) * orthoPadding.x;
             // float yPad = (t - b) * orthoPadding.y;
-            // float zPad = (far - near) * orthoPadding.z;
+            float zPad = (far - near) * orthoPadding.z;
 
             // l -= xPad;
             // r += xPad;
             // b -= yPad;
             // t += yPad;
             // near -= zPad;
-            // far += zPad;
+            far += zPad;
 
             // --------------------------------------------------
             // Texel snapping (reduces shimmer)
