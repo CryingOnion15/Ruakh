@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -295,7 +296,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // r += xPad;
             // b -= yPad;
             // t += yPad;
-            // near -= zPad;
+            near -= zPad;
             far += zPad;
 
             // --------------------------------------------------
