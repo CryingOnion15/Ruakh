@@ -211,7 +211,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             name = "_StainedShadowDepthTexture",
             clearBuffer = true,
             slices = 4,
-            clearColor = Color.clear,
+            clearColor = Color.red,
         };
 
         cascadeColorTexture = rg.CreateTexture(colorDesc);
@@ -220,7 +220,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     protected void UpdateLightDataForCascades(Camera camera, CascadeData cData)
     {
-        lightDirection = dirLight.transform.forward;
+        lightDirection = -dirLight.transform.forward;
 
         // Stable up vector (avoid gimbal flip)
         Vector3 up =
@@ -233,13 +233,13 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             //float minZ = float
 
             // calculate cascade center.
-            // Vector3 center = Vector3.zero;
-            // for (int j = 0; j < 8; j++)
-            // {
-            //     center += corners[j];
-            //     maxY = Math.Max(maxY, corners[j].y);
-            // }
-            // center /= 8;
+            Vector3 center = Vector3.zero;
+            for (int j = 0; j < 8; j++)
+            {
+                center += corners[j];
+                maxY = Math.Max(maxY, corners[j].y);
+            }
+            center /= 8;
 
             Vector3 lightPosition =
                 camera.transform.position
@@ -251,13 +251,13 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                             cData.CascadeBounds[i]
                         ) - 10f
                     );
-            lightPosition.y = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
+            float mag = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
             //Vector3 lightPosition = camera.transform.forward + ;
 
             // Generate view Matrix
             Matrix4x4 view = Matrix4x4.LookAt(
-                lightPosition,
-                lightPosition + lightDirection,
+                center - lightDirection * mag, // Light position (far away in the direction of the light)
+                center,
                 dirLight.transform.up
             );
 
@@ -278,6 +278,11 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             float t = max.y;
             float near = min.z;
             float far = max.z;
+
+            if (near > far)
+            {
+                (near, far) = (far, near);
+            }
 
             // // --------------------------------------------------
             // // Padding
@@ -307,10 +312,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // --------------------------------------------------
             // Orthographic Projection
             // --------------------------------------------------
-            Matrix4x4 proj = GL.GetGPUProjectionMatrix(
-                Matrix4x4.Ortho(l, r, b, t, near, far),
-                true
-            );
+            Matrix4x4 proj = Matrix4x4.Ortho(l, r, b, t, near, far);
 
             // --------------------------------------------------
             // Store results

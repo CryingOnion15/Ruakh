@@ -53,6 +53,7 @@ Shader "Hidden/StainedShadowMaskOverride"
                 float shadow = SHADOW_TEST(i.worldPosition, i.worldNormal);
                 float4 shadowColor = SampleStainedShadowColor(i.worldPosition);
 
+                return float4(shadow, shadow, shadow, 1.0);
                 return shadowColor * shadow;
             }
 

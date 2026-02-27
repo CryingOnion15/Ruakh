@@ -172,7 +172,7 @@ float SHADOW_TEST(float3 worldPos, float3 normal)
         // Sample depth with cascade blending
         float sampledDepth = SampleShadowDepthBlend(worldPos, cascadeIndex, offset);
 
-        shadow += step(currentDepth, sampledDepth + bias);
+        shadow += step(sampledDepth, currentDepth);
     }
 
     return shadow / 8.0;
