@@ -78,7 +78,7 @@ float2 GetLightSpaceUV(float3 worldPos, uint cascadeIndex) {
 float GetLightSpaceDepth(float3 worldPos, uint cascadeIndex)
 {
     float4 lightClip = mul(_StainedShadowVPMatrix[cascadeIndex], float4(worldPos,1));
-    float linearDepth = lightClip.z;
+    float linearDepth = lightClip.z / lightClip.w;
     return linearDepth;
 }
 

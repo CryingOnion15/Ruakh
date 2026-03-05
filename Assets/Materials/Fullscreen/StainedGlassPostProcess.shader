@@ -63,8 +63,16 @@ Shader "Fullscreen/StainedGlassPostProcess"
                 // --- Sample shadow mask ---
                 float4 shadow = SAMPLE_TEXTURE2D(_StainedShadowMask, sampler_StainedShadowMask, IN.uv);
 
-                return shadow;
-                return screen + shadow;
+                //return shadow;
+                //return screen + shadow;
+
+                //Debug
+                float depth = SampleSceneDepth(IN.uv);
+                float3 world = ComputeWorldSpacePosition(IN.uv, depth, UNITY_MATRIX_I_VP);
+                uint casIndex = GetCascadeIndex(world);
+                float currentDepth = GetLightSpaceDepth(world, casIndex);
+                float sampledDepth = SampleShadowDepthBlend(world, casIndex, float2(0.0,0.0));
+                return screen + float4(sampledDepth, 0.0,0.0,1.0);
             }
 
             ENDHLSL

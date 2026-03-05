@@ -220,46 +220,32 @@ public class StainedShadowRenderPass : ScriptableRenderPass
 
     protected void UpdateLightDataForCascades(Camera camera, CascadeData cData)
     {
-        lightDirection = dirLight.transform.forward;
+        lightDirection = -dirLight.transform.forward;
 
-        // Stable up vector (avoid gimbal flip)
-        Vector3 up =
+        // pick a safe world axis
+        Vector3 tempUp =
             Mathf.Abs(Vector3.Dot(lightDirection, Vector3.up)) > 0.99f ? Vector3.right : Vector3.up;
+
+        // build orthonormal basis
+        Vector3 right = Vector3.Normalize(Vector3.Cross(tempUp, lightDirection));
+        Vector3 up = Vector3.Cross(lightDirection, right);
 
         for (int i = 0; i < cData.CascadeCount; i++)
         {
             Vector3[] corners = cData.cascadeCorners[i];
             float maxY = float.NegativeInfinity;
-            //float minZ = float
 
-            // calculate cascade center.
-            // Vector3 center = Vector3.zero;
-            // for (int j = 0; j < 8; j++)
-            // {
-            //     center += corners[j];
-            //     maxY = Math.Max(maxY, corners[j].y);
-            // }
-            // center /= 8;
+            // Compute cascade center
+            Vector3 center = Vector3.zero;
+            for (int j = 0; j < 8; j++)
+                center += corners[j];
+            center /= 8f;
 
-            Vector3 lightPosition =
-                camera.transform.position
-                + camera.transform.forward
-                    * (
-                        Mathf.Lerp(
-                            camera.nearClipPlane,
-                            camera.farClipPlane,
-                            cData.CascadeBounds[i]
-                        ) - 10f
-                    );
-            lightPosition.y = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
-            //Vector3 lightPosition = camera.transform.forward + ;
+            float magnitude = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
+            //Vector3 direction = lightDirection;
 
             // Generate view Matrix
-            Matrix4x4 view = Matrix4x4.LookAt(
-                lightPosition,
-                lightPosition + lightDirection,
-                dirLight.transform.up
-            );
+            Matrix4x4 view = Matrix4x4.LookAt(center - lightDirection * magnitude, center, up);
 
             Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -272,12 +258,19 @@ public class StainedShadowRenderPass : ScriptableRenderPass
                 max = Vector3.Max(max, v);
             }
 
+            Debug.Log($"Min: {min.z} Max: {max.z}");
+
             float l = min.x;
             float r = max.x;
             float b = min.y;
             float t = max.y;
             float near = min.z;
             float far = max.z;
+
+            if (near > far)
+            {
+                (near, far) = (far, near);
+            }
 
             // // --------------------------------------------------
             // // Padding
