@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -211,7 +212,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             name = "_StainedShadowDepthTexture",
             clearBuffer = true,
             slices = 4,
-            clearColor = Color.clear,
+            clearColor = Color.red,
         };
 
         cascadeColorTexture = rg.CreateTexture(colorDesc);
@@ -235,17 +236,34 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             Vector3[] corners = cData.cascadeCorners[i];
             float maxY = float.NegativeInfinity;
 
-            // Compute cascade center
+            // calculate cascade center.
             Vector3 center = Vector3.zero;
             for (int j = 0; j < 8; j++)
+            {
                 center += corners[j];
-            center /= 8f;
+                maxY = Math.Max(maxY, corners[j].y);
+            }
+            center /= 8;
 
-            float magnitude = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
-            //Vector3 direction = lightDirection;
+            Vector3 lightPosition =
+                camera.transform.position
+                + camera.transform.forward
+                    * (
+                        Mathf.Lerp(
+                            camera.nearClipPlane,
+                            camera.farClipPlane,
+                            cData.CascadeBounds[i]
+                        ) - 10f
+                    );
+            float mag = Math.Max(camera.transform.position.y + 50f, maxY + 10f);
+            //Vector3 lightPosition = camera.transform.forward + ;
 
             // Generate view Matrix
-            Matrix4x4 view = Matrix4x4.LookAt(center - lightDirection * magnitude, center, up);
+            Matrix4x4 view = Matrix4x4.LookAt(
+                center - lightDirection * mag, // Light position (far away in the direction of the light)
+                center,
+                dirLight.transform.up
+            );
 
             Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -283,7 +301,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // r += xPad;
             // b -= yPad;
             // t += yPad;
-            // near -= zPad;
+            near -= zPad;
             far += zPad;
 
             // --------------------------------------------------
@@ -300,10 +318,7 @@ public class StainedShadowRenderPass : ScriptableRenderPass
             // --------------------------------------------------
             // Orthographic Projection
             // --------------------------------------------------
-            Matrix4x4 proj = GL.GetGPUProjectionMatrix(
-                Matrix4x4.Ortho(l, r, b, t, near, far),
-                true
-            );
+            Matrix4x4 proj = Matrix4x4.Ortho(l, r, b, t, near, far);
 
             // --------------------------------------------------
             // Store results
